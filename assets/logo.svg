@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 160">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#1d70b8"/>
+      <stop offset="1" stop-color="#0a3a6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="160" rx="18" fill="#0f172a"/>
+  <g transform="translate(20,20)">
+    <rect x="0" y="20" width="200" height="80" rx="14" fill="url(#g)"/>
+    <g fill="#fff" transform="translate(14,30)">
+      <rect x="0" y="26" width="90" height="28" rx="6"/>
+      <rect x="94" y="36" width="34" height="18" rx="4"/>
+      <circle cx="28" cy="64" r="10" fill="#0f172a"/>
+      <circle cx="74" cy="64" r="10" fill="#0f172a"/>
+    </g>
+    <text x="230" y="65" font-family="Montserrat,Segoe UI,Arial" font-weight="800" font-size="40" fill="#e2e8f0">AI Navigation</text>
+    <text x="230" y="95" font-family="Inter,Segoe UI,Arial" font-size="14" fill="#94a3b8">Truck-first offline GPS</text>
+  </g>
+</svg>
