@@ -1,13 +1,5 @@
-import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
+import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
 
-import 'classic_day.dart';
-import 'classic_night.dart';
-
-/// Egységes típusnév a térkép témához.
-typedef MapTheme = vtr.Theme;
-
-/// Nappali téma
-vtr.Theme dayTheme() => classicDayTheme();
-
-/// Éjszakai téma
-vtr.Theme nightTheme() => classicNightTheme();
+/// Központi export a két gyári témára
+vmt.Theme dayTheme() => vmt.ProtomapsThemes.light();
+vmt.Theme nightTheme() => vmt.ProtomapsThemes.dark();
