@@ -22,14 +22,15 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.22.3'   # Dart 3.4-hez jó
+          channel: 'stable'
 
-      # Ha véletlenül nincs android/ mappa, generáljuk le.
       - name: Ensure Android folder exists
         run: |
           if [ ! -d android ]; then
-            flutter create . --platforms=android
+            flutter create --platforms=android .
           fi
+          echo "Your application code is in ./lib/main.dart."
 
       - name: Install dependencies
         run: flutter pub get
@@ -40,5 +41,5 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-release-apk
+          name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
