@@ -1,3 +1,4 @@
+import 'dart:convert'; // <-- kell a jsonDecode/jsonEncode-hoz
 import 'dart:io';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:path_provider/path_provider.dart';
@@ -34,8 +35,8 @@ Future<void> downloadFile(String url, File to, {void Function(double p)? onProgr
   );
   await FileDownloader().download(
     task,
-    onProgress: (_, p) => onProgress?.call(p),
-    onStatus: (t, s) {},
+    onProgress: (p) => onProgress?.call(p),
+    onStatus: (s) {},
   );
 }
 
