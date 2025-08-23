@@ -6,36 +6,39 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:easy_localization/easy_localization.dart';
 
+// Saját szolgáltatások
 import '../services/tiles_provider.dart';
 import '../services/storage.dart';
 import '../services/tts.dart';
 import '../services/routing_engine.dart';
 import '../services/pois_db.dart';
 
+// Modelek
 import '../models/route_models.dart';
 import '../models/truck.dart';
 
+// Map témák (vector_tile_renderer alapú Theme)
 import '../theme/classic_day.dart';
 import '../theme/classic_night.dart';
+import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
+// Widgetek
 import '../widgets/waypoint_list.dart';
 import '../widgets/profile_picker.dart';
 import '../widgets/poi_toggles.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeState();
 }
 
 class _HomeState extends State<HomeScreen> {
-  // a vektor-tile renderer témája – ezt adja a VectorTileLayer
-  vtr.Theme? _theme;
-
-  File? _pmtiles;
-  File? _poisFile;
-  PoisDB? _pois;
+  // --- állapot ---
+  vtr.Theme? _theme;               // vektor-csempe téma
+  File? _pmtiles;                  // régió csempe-fájl
+  File? _poisFile;                 // POI sqlite
+  PoisDB? _pois;                   // megnyitott POI DB
 
   final mapCtrl = MapController();
 
@@ -44,8 +47,8 @@ class _HomeState extends State<HomeScreen> {
   ProfileKind profile = ProfileKind.motorway;
 
   bool showCameras = false, showParks = true, showFuel = true, showServices = false;
-  String style = 'day';
-  String zoom = 'mid';
+  String style = 'day'; // 'day' | 'night'
+  String zoom = 'mid';  // 'near' | 'mid' | 'far'
 
   RouteResult? rr;
   List<Polyline> lines = [];
@@ -59,6 +62,7 @@ class _HomeState extends State<HomeScreen> {
     _loadRegionIfAny();
   }
 
+  // ----- állapot perzisztencia -----
   Future<void> _loadState() async {
     final s = await KV.get<Map>('state');
     final set = await KV.get<Map>('settings');
@@ -70,7 +74,10 @@ class _HomeState extends State<HomeScreen> {
       showParks = s?['parks'] ?? true;
       showFuel = s?['fuel'] ?? true;
       showServices = s?['svc'] ?? false;
-      wps = (s?['wps'] as List?)?.map((e) => Coord((e[0] as num) * 1.0, (e[1] as num) * 1.0)).toList() ?? wps;
+      wps = (s?['wps'] as List?)
+              ?.map((e) => Coord((e[0] as num).toDouble(), (e[1] as num).toDouble()))
+              .toList() ??
+          wps;
     });
   }
 
@@ -81,15 +88,15 @@ class _HomeState extends State<HomeScreen> {
       'parks': showParks,
       'fuel': showFuel,
       'svc': showServices,
-      'wps': wps.map((w) => [w.lon, w.lat]).toList()
+      'wps': wps.map((w) => [w.lon, w.lat]).toList(),
     });
   }
 
   void _initTheme() {
-    // vtr.Theme típus!
     setState(() => _theme = style == 'day' ? classicDayTheme() : classicNightTheme());
   }
 
+  // ----- régió + POI betöltés -----
   Future<void> _loadRegionIfAny() async {
     final doc = await getApplicationDocumentsDirectory();
     final regionsDir = Directory('${doc.path}/regions');
@@ -98,33 +105,25 @@ class _HomeState extends State<HomeScreen> {
     for (final e in await regionsDir.list().toList()) {
       final p = File('${e.path}/tiles.pmtiles');
       final pois = File('${e.path}/pois.sqlite');
-      if (await p.exists()) {
-        setState(() => _pmtiles = p);
-      }
+      if (await p.exists()) setState(() => _pmtiles = p);
       if (await pois.exists()) {
         _poisFile = pois;
         _pois = await PoisDB.open(pois.path);
       }
       if (_pmtiles != null) break;
     }
-
     if (mounted) _refreshPoisFromView();
   }
 
+  // ----- útvonal -----
   Future<void> _route() async {
     try {
-      final r = await RoutingEngine.route(
-        wps,
-        truck,
-        RouteOptions(
-          profile,
-          context.locale.languageCode == 'hu'
-              ? 'hu-HU'
-              : context.locale.languageCode == 'de'
-                  ? 'de-DE'
-                  : 'en-US',
-        ),
-      );
+      final lang = context.locale.languageCode == 'hu'
+          ? 'hu-HU'
+          : context.locale.languageCode == 'de'
+              ? 'de-DE'
+              : 'en-US';
+      final r = await RoutingEngine.route(wps, truck, RouteOptions(profile, lang));
       if (!mounted) return;
       setState(() {
         rr = r;
@@ -133,7 +132,7 @@ class _HomeState extends State<HomeScreen> {
             points: r.line.map((e) => LatLng(e[1], e[0])).toList(),
             strokeWidth: 5,
             color: Colors.orange,
-          )
+          ),
         ];
       });
       _scheduleCues(r);
@@ -147,13 +146,12 @@ class _HomeState extends State<HomeScreen> {
     if (r.mans.isEmpty) return;
     final next = r.mans.first;
     final isMw = (next.roadClass ?? '').contains('motorway') || (next.roadClass ?? '').contains('trunk');
-    speak(isMw ? 'Autópálya lehajtó 3 km múlva' : 'Lehajtó 2 km múlva', 'hu-HU');
+    final d1 = isMw ? 3000.0 : 2000.0;
+    speak(isMw ? 'Autópálya lehajtó ${(d1 / 1000).toStringAsFixed(0)} km múlva' : 'Lehajtó ${(d1 / 1000).toStringAsFixed(0)} km múlva', 'hu-HU');
     speak(isMw ? 'Lehajtó 500 méter múlva' : 'Lehajtó 300 méter múlva', 'hu-HU');
   }
 
-  // --- POI frissítés ---
-
-  // NINCS paraméter → nem lesz MapPosition/MapCamera típushiba
+  // ----- POI frissítés -----
   void _onMapMoved() {
     _refreshPoisFromView();
   }
@@ -162,7 +160,6 @@ class _HomeState extends State<HomeScreen> {
     if (_pois == null) return;
     final center = mapCtrl.camera.center;
     final zoomVal = mapCtrl.camera.zoom;
-
     final span = math.max(0.02, 2.0 / math.pow(2.0, (zoomVal - 8)));
     final west = center.longitude - span;
     final east = center.longitude + span;
@@ -202,11 +199,10 @@ class _HomeState extends State<HomeScreen> {
         ),
       );
 
-  // --- UI ---
-
+  // ----- UI -----
   @override
-  Widget build(BuildContext ctx) {
-    final layerFut = _pmtiles != null && _theme != null ? pmtilesLayer(_pmtiles!, _theme!) : null;
+  Widget build(BuildContext context) {
+    final layerFut = (_pmtiles != null && _theme != null) ? pmtilesLayer(_pmtiles!, _theme!) : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -225,45 +221,47 @@ class _HomeState extends State<HomeScreen> {
         ],
       ),
       body: _pmtiles == null
-          ? _noRegion(ctx)
-          : FutureBuilder<Widget>(
+          ? _noRegion(context)
+          : FutureBuilder(
               future: layerFut,
               builder: (c, s) {
                 if (!s.hasData) return const Center(child: CircularProgressIndicator());
-                return Stack(children: [
-                  FlutterMap(
-                    mapController: mapCtrl,
-                    options: MapOptions(
-                      center: LatLng(47.497, 19.040),
-                      zoom: zoom == 'near' ? 15 : zoom == 'mid' ? 13 : 11,
-                      onMapEvent: (evt) {
-                        if (evt is MapEventMoveEnd || evt is MapEventRotateEnd || evt is MapEventZoomEnd) {
-                          _onMapMoved();
-                        }
-                      },
-                      onLongPress: (tapPos, point) {
-                        setState(() => wps = [...wps, Coord(point.longitude, point.latitude)]);
-                        _saveState();
-                      },
-                    ),
-                    children: [
-                      s.data!, // VectorTileLayer
-                      PolylineLayer(polylines: lines),
-                      MarkerLayer(markers: poiMarkers),
-                      MarkerLayer(
-                        markers: wps
-                            .map((w) => Marker(
-                                  point: LatLng(w.lat, w.lon),
-                                  width: 40,
-                                  height: 40,
-                                  child: const Icon(Icons.place, color: Colors.red),
-                                ))
-                            .toList(),
+                return Stack(
+                  children: [
+                    FlutterMap(
+                      mapController: mapCtrl,
+                      options: MapOptions(
+                        center: LatLng(47.497, 19.040),
+                        zoom: zoom == 'near' ? 15 : zoom == 'mid' ? 13 : 11,
+                        onMapEvent: (evt) {
+                          if (evt is MapEventMoveEnd || evt is MapEventRotateEnd || evt is MapEventZoomEnd) {
+                            _onMapMoved();
+                          }
+                        },
+                        onLongPress: (tapPos, point) {
+                          setState(() => wps = [...wps, Coord(point.longitude, point.latitude)]);
+                          _saveState();
+                        },
                       ),
-                    ],
-                  ),
-                  _panel(ctx),
-                ]);
+                      children: [
+                        s.data as Widget,                // vektor csempék
+                        PolylineLayer(polylines: lines),
+                        MarkerLayer(markers: poiMarkers), // POI-k
+                        MarkerLayer(
+                          markers: wps
+                              .map((w) => Marker(
+                                    point: LatLng(w.lat, w.lon),
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(Icons.place, color: Colors.red),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                    _panel(context),
+                  ],
+                );
               },
             ),
     );
@@ -273,7 +271,7 @@ class _HomeState extends State<HomeScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(tr('no_regions')),
           const SizedBox(height: 8),
-          ElevatedButton(onPressed: () => Navigator.pushNamed(c, '/catalog'), child: Text(tr('download_region')))
+          ElevatedButton(onPressed: () => Navigator.pushNamed(c, '/catalog'), child: Text(tr('download_region'))),
         ]),
       );
 
@@ -288,8 +286,11 @@ class _HomeState extends State<HomeScreen> {
           padding: const EdgeInsets.all(8),
           child: SingleChildScrollView(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Profil választó
               ProfilePicker(value: profile, onChanged: (k) => setState(() => profile = k)),
               const SizedBox(height: 6),
+
+              // Waypoint lista
               WaypointList(
                 wps: wps,
                 onChanged: (a) {
@@ -298,6 +299,8 @@ class _HomeState extends State<HomeScreen> {
                 },
               ),
               const SizedBox(height: 6),
+
+              // POI kapcsolók
               PoiToggles(
                 parks: showParks,
                 fuel: showFuel,
@@ -319,6 +322,7 @@ class _HomeState extends State<HomeScreen> {
                 },
               ),
               const SizedBox(height: 6),
+
               Row(children: [
                 DropdownButton(
                   value: style,
@@ -349,10 +353,9 @@ class _HomeState extends State<HomeScreen> {
                 ElevatedButton(onPressed: _route, child: const Text('Útvonal')),
               ]),
               const SizedBox(height: 6),
+
               if (rr != null)
-                Text(
-                  ' ${(rr!.distanceKm).toStringAsFixed(1)} km • ${rr!.durationMin.toStringAsFixed(0)} min • ETA ${rr!.eta.toLocal().toString().substring(11, 16)} ',
-                ),
+                Text(' ${(rr!.distanceKm).toStringAsFixed(1)} km • ${rr!.durationMin.toStringAsFixed(0)} min • ETA ${rr!.eta.toLocal().toString().substring(11, 16)} '),
             ]),
           ),
         ),
