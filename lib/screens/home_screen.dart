@@ -42,6 +42,11 @@ class _HomeState extends State<HomeScreen> {
   File? _pmtiles;                  // régió csempe-fájl
   File? _poisFile;                 // POI sqlite
   PoisDB? _pois;                   // megnyitott POI DB
+// _HomeState osztály tetején (a többi state változó mellé):
+LatLng? _lastCenter;
+double? _lastZoom;
+double? _lastRotation;
+
 
   final mapCtrl = MapController();
 
@@ -236,11 +241,43 @@ class _HomeState extends State<HomeScreen> {
                       options: MapOptions(
                         center: LatLng(47.497, 19.040),
                         zoom: zoom == 'near' ? 15 : zoom == 'mid' ? 13 : 11,
-                        onMapEvent: (evt) {
-                          if (evt is MapEventMoveEnd || evt is MapEventRotateEnd || evt is MapEventZoomEnd) {
-                            _onMapMoved();
-                          }
-                        },
+                        
+onMapEvent: (evt) {
+  // Tap/long-press NEM vált POI-frissítést
+  if (evt is MapEventTap || evt is MapEventLongPress) return;
+
+  // Kamera aktuális állapota
+  final cam = mapCtrl.camera;
+
+  // Kis tűrés a lebegőpontos összehasonlításhoz
+  const epsZoom = 0.001;
+  const epsRot  = 0.1;   // fok
+
+  bool changed = false;
+  if (_lastCenter == null) {
+    changed = true;
+  } else {
+    final movedLat = _lastCenter!.latitude  != cam.center.latitude;
+    final movedLon = _lastCenter!.longitude != cam.center.longitude;
+    final zoomDiff = (_lastZoom ?? -999) - cam.zoom;
+    final rotDiff  = (_lastRotation ?? -999) - cam.rotation;
+
+    final zoomChanged = zoomDiff.abs() > epsZoom;
+    final rotChanged  = rotDiff.abs()  > epsRot;
+
+    changed = movedLat || movedLon || zoomChanged || rotChanged;
+  }
+
+  // Következő eseményhez frissítjük az előző állapotot
+  _lastCenter   = cam.center;
+  _lastZoom     = cam.zoom;
+  _lastRotation = cam.rotation;
+
+  // Ha tényleg változott, frissíts POI-t
+  if (changed) {
+    _onMapMoved();
+  }
+},
                         onLongPress: (tapPos, point) {
                           setState(() => wps = [...wps, Coord(point.longitude, point.latitude)]);
                           _saveState();
