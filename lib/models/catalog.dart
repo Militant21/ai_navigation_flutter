@@ -1,39 +1,30 @@
-// lib/services/manifest.dart
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../models/catalog.dart';
+class Region {
+  String id;
+  String name;
+  String country;         // ISO kód (pl. GB, DE)
+  String? version;        // régió-verzió (pl. 2025-08-01-uk-v1)
+  String? pmtiles;
+  String? mbtiles;
+  String? pois;
+  String? valhalla;
+  int? approxSizeMb;
 
-Future<Catalog> fetchCatalog(String url) async {
-  final r = await http.get(Uri.parse(url));
-  if (r.statusCode != 200) {
-    throw Exception('Catalog HTTP ${r.statusCode}');
-  }
+  Region({
+    required this.id,
+    required this.name,
+    required this.country,
+    this.version,
+    this.pmtiles,
+    this.mbtiles,
+    this.pois,
+    this.valhalla,
+    this.approxSizeMb,
+  });
+}
 
-  final j = jsonDecode(r.body) as Map<String, dynamic>;
-  final List<dynamic> rawRegions = (j['regions'] as List?) ?? const [];
+class Catalog {
+  String version;         // katalógus-verzió
+  List<Region> regions;
 
-  int? _toInt(dynamic v) {
-    if (v == null) return null;
-    if (v is int) return v;
-    if (v is double) return v.round();
-    if (v is String) return int.tryParse(v);
-    return null;
-  }
-
-  final regions = rawRegions.map((x) {
-    final m = x as Map<String, dynamic>;
-    return Region(
-      id: (m['id'] ?? '').toString(),            // <- KÖTELEZŐ, nem-null
-      name: (m['name'] ?? '').toString(),
-      country: (m['country'] ?? '').toString(),
-      version: (m['version'])?.toString(),
-      pmtiles: (m['pmtiles'])?.toString(),
-      mbtiles: (m['mbtiles'])?.toString(),
-      pois: (m['pois'])?.toString(),
-      valhalla: (m['valhalla'])?.toString(),
-      approxSizeMb: _toInt(m['approx_size_mb']),
-    );
-  }).toList();
-
-  return Catalog((j['version'] ?? '0').toString(), regions);
+  Catalog(this.version, this.regions);
 }

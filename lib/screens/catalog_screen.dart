@@ -5,35 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../services/downloader.dart';
 
-// --- Helyi, minimál modellek a fordításhoz (később kitehetjük külön file-okba) ---
-
-class Region {
-  final String iso;          // pl. 'HU'
-  final String name;         // megjelenített név
-  final String? version;     // elérhető verzió (pl. 'v5')
-  final int? approxSizeMb;   // becsült méret MB-ban
-
-  Region({
-    required this.iso,
-    required this.name,
-    this.version,
-    this.approxSizeMb,
-  });
-}
-
-class Catalog {
-  final List<Region> regions;
-  Catalog({required this.regions});
-}
-
-/// Később ide jöhet a valódi letöltés.
-/// Most visszaadunk egy üres katalógust, hogy a képernyő felépüljön.
-Future<Catalog> fetchCatalog(String url) async {
-  return Catalog(regions: <Region>[]);
-}
-
-/// Ha a képernyő a telepített verziót kérdezi, ezt a helyi stub adja vissza.
-/// Később rá lehet kötni a tényleges tárolóra/manifestre.
 Future<String?> installedVersion(String regionId) async {
   return null;
 }
