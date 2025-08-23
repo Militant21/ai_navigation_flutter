@@ -1,18 +1,32 @@
-import 'package:vector_map_tiles/vector_map_tiles.dart';
-import 'package:vector_tile_renderer/vector_tile_renderer.dart';
+// lib/theme/map_themes.dart
+//
+// EGYEDI, ASZINKRON téma-betöltés a vector_tile_renderer-hez.
+// A ProtomapsThemes (light/dark) nyers definícióját vesszük,
+// és ThemeReader-rel vtr.Theme objektummá alakítjuk.
+// IDE tudsz egyediséget bevinni: a 'themeData' Map módosítható,
+// pl. színek, vastagságok, láthatóság, stb.
 
-/// Egyedi, aszinkron betölthető map-témák.
-/// A ProtomapsThemes (light/dark) definícióját vesszük a vector_map_tiles-ből,
-/// majd ThemeReader-rel vtr.Theme objektummá alakítjuk.
+import 'package:vector_map_tiles/vector_map_tiles.dart';            // ProtomapsThemes.* definíció
+import 'package:vector_tile_renderer/vector_tile_renderer.dart';    // Theme + ThemeReader
 
-/// Nappali, világos téma (async beolvasással).
+/// Nappali, egyedi téma (async)
 Future<Theme> createDayTheme() async {
-  final themeData = ProtomapsThemes.light(); // definíció a vmt csomagból
+  final themeData = ProtomapsThemes.light();
+
+  // ----- Egyedi módosítások helye (példa) -----
+  // Példa: (ha ismered a struktúrát) themeData['layers']... = ...
+  // --------------------------------------------
+
   return await ThemeReader(themeData: themeData).read();
 }
 
-/// Éjszakai, sötét téma (async beolvasással).
+/// Éjszakai, egyedi téma (async)
 Future<Theme> createNightTheme() async {
-  final themeData = ProtomapsThemes.dark(); // definíció a vmt csomagból
+  final themeData = ProtomapsThemes.dark();
+
+  // ----- Egyedi módosítások helye (példa) -----
+  // Példa: themeData['layers']... = ...
+  // --------------------------------------------
+
   return await ThemeReader(themeData: themeData).read();
 }

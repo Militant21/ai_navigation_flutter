@@ -100,9 +100,11 @@ double? _lastRotation;
     });
   }
 
-  void _initTheme() {
-    setState(() => _theme = style == 'day' ? classicDayTheme() : classicNightTheme());
-  }
+  Future<void> _initTheme() async {
+  final t = style == 'day' ? await createDayTheme() : await createNightTheme();
+  if (!mounted) return;
+  setState(() => _theme = t);
+}
 
   // ----- régió + POI betöltés -----
   Future<void> _loadRegionIfAny() async {
@@ -228,7 +230,7 @@ double? _lastRotation;
           ),
         ],
       ),
-      body: _pmtiles == null
+      body: (_pmtiles == null || _theme == null)
           ? _noRegion(context)
           : FutureBuilder(
               future: layerFut,
