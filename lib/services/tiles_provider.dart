@@ -27,3 +27,4 @@ Future<VectorTileLayer> pmtilesLayer(File pmtilesFile, vtr.Theme theme) async {
     tileProviders: TileProviders({'protomaps': prov}),
   );
 }
+

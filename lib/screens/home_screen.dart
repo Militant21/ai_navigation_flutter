@@ -62,14 +62,13 @@ double? _lastRotation;
   List<Polyline> lines = [];
   List<Marker> poiMarkers = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _loadState();
-    _initTheme();
-    _loadRegionIfAny();
-  }
-
+@override
+void initState() {
+  super.initState();
+  _loadState();
+  _initTheme();      // <- ez MOST már async metódus, de itt simán hívjuk
+  _loadRegionIfAny();
+}
   // ----- állapot perzisztencia -----
   Future<void> _loadState() async {
     final s = await KV.get<Map>('state');
@@ -100,7 +99,7 @@ double? _lastRotation;
     });
   }
 
-  Future<void> _initTheme() async {
+  Future<void> await _initTheme() async {
   final t = style == 'day' ? await createDayTheme() : await createNightTheme();
   if (!mounted) return;
   setState(() => _theme = t);
