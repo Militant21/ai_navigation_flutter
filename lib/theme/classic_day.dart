@@ -1,17 +1,34 @@
-import 'package:vector_map_tiles/vector_map_tiles.dart';
-import 'package:vector_tile_renderer/vector_tile_renderer.dart';
+import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
+import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-Theme classicDayTheme() {
-  final base = ProtomapsThemes.light();
+vtr.Theme classicDayTheme() {
+  final base = vmt.ProtomapsThemes.light();
+
   return base.copyWith(
+    // háttér
+    background: const vtr.BackgroundLayer(color: vtr.Color(0xFFFFFFFF)),
+    // rétegek módosítása
     layers: base.layers.map((l) {
-      // kis szín-finomhangolás – autópálya narancsosabb, víz kékebb
-      if (l is LineLayer && l.sourceLayer == 'roads' && (l.filter?.toString().contains('motorway') ?? false)) {
-        return l.copyWith(paint: l.paint.copyWith(color: const ColorStyle(Color(0xFFE8922F))));
+      // autópályák színezése
+      if (l is vtr.LineLayer &&
+          l.sourceLayer == 'roads' &&
+          (l.filter?.toString().contains('motorway') ?? false)) {
+        return l.copyWith(
+          paint: l.paint.copyWith(
+            color: const vtr.ColorStyle(vtr.Color(0xFFFF9A2A)),
+          ),
+        );
       }
-      if (l is FillLayer && l.sourceLayer == 'water') {
-        return l.copyWith(paint: l.paint.copyWith(color: const ColorStyle(Color(0xFFA4C6FF))));
+
+      // víz réteg
+      if (l is vtr.FillLayer && l.sourceLayer == 'water') {
+        return l.copyWith(
+          paint: l.paint.copyWith(
+            color: const vtr.ColorStyle(vtr.Color(0xFF00A2A3)),
+          ),
+        );
       }
+
       return l;
     }).toList(),
   );
