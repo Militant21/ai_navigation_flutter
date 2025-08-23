@@ -1,38 +1,41 @@
 import 'dart:io';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/plugin_api.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
+
 import '../services/tiles_provider.dart';
 import '../services/storage.dart';
 import '../services/tts.dart';
 import '../services/routing_engine.dart';
 import '../services/pois_db.dart';
+
 import '../models/route_models.dart';
 import '../models/truck.dart';
+
 import '../theme/classic_day.dart';
 import '../theme/classic_night.dart';
+
 import '../widgets/waypoint_list.dart';
 import '../widgets/profile_picker.dart';
 import '../widgets/poi_toggles.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeState();
 }
 
-class _HomeState extends State<HomeScreen> 
+class _HomeState extends State<HomeScreen> {
+  // a vektor-tile renderer témája – ezt adja a VectorTileLayer
+  vtr.Theme? _theme;
 
-vtr.Theme? _theme; // map theme (vector_tile_renderer)
   File? _pmtiles;
-  File? _poisFile;         // <-- POI adatbázis fájl
-  PoisDB? _pois;           // <-- megnyitott db
+  File? _poisFile;
+  PoisDB? _pois;
 
   final mapCtrl = MapController();
 
@@ -41,7 +44,8 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
   ProfileKind profile = ProfileKind.motorway;
 
   bool showCameras = false, showParks = true, showFuel = true, showServices = false;
-  String style = 'day'; String zoom = 'mid';
+  String style = 'day';
+  String zoom = 'mid';
 
   RouteResult? rr;
   List<Polyline> lines = [];
@@ -62,11 +66,11 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
     setState(() {
       style = s?['style'] ?? 'day';
       zoom = s?['zoom'] ?? 'mid';
-      showCameras = set?['speedCameras'] ?? false; // settingsből
+      showCameras = set?['speedCameras'] ?? false;
       showParks = s?['parks'] ?? true;
       showFuel = s?['fuel'] ?? true;
       showServices = s?['svc'] ?? false;
-      wps = (s?['wps'] as List?)?.map((e) => Coord((e[0] as num)*1.0, (e[1] as num)*1.0)).toList() ?? wps;
+      wps = (s?['wps'] as List?)?.map((e) => Coord((e[0] as num) * 1.0, (e[1] as num) * 1.0)).toList() ?? wps;
     });
   }
 
@@ -82,6 +86,7 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
   }
 
   void _initTheme() {
+    // vtr.Theme típus!
     setState(() => _theme = style == 'day' ? classicDayTheme() : classicNightTheme());
   }
 
@@ -90,7 +95,6 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
     final regionsDir = Directory('${doc.path}/regions');
     if (!await regionsDir.exists()) return;
 
-    // egyszerű stratégia: első található régió
     for (final e in await regionsDir.list().toList()) {
       final p = File('${e.path}/tiles.pmtiles');
       final pois = File('${e.path}/pois.sqlite');
@@ -104,7 +108,6 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
       if (_pmtiles != null) break;
     }
 
-    // ha van POI adat, töltsük be az aktuális nézethez
     if (mounted) _refreshPoisFromView();
   }
 
@@ -113,8 +116,16 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
       final r = await RoutingEngine.route(
         wps,
         truck,
-        RouteOptions(profile, context.locale.languageCode == 'hu' ? 'hu-HU' : context.locale.languageCode == 'de' ? 'de-DE' : 'en-US'),
+        RouteOptions(
+          profile,
+          context.locale.languageCode == 'hu'
+              ? 'hu-HU'
+              : context.locale.languageCode == 'de'
+                  ? 'de-DE'
+                  : 'en-US',
+        ),
       );
+      if (!mounted) return;
       setState(() {
         rr = r;
         lines = [
@@ -136,24 +147,23 @@ vtr.Theme? _theme; // map theme (vector_tile_renderer)
     if (r.mans.isEmpty) return;
     final next = r.mans.first;
     final isMw = (next.roadClass ?? '').contains('motorway') || (next.roadClass ?? '').contains('trunk');
-    final d1 = isMw ? 3000.0 : 2000.0;
-    final d2 = isMw ? 500.0 : 300.0;
-    speak(isMw ? 'Autópálya lehajtó ${(d1/1000).toStringAsFixed(0)} km múlva' : 'Lehajtó ${(d1/1000).toStringAsFixed(0)} km múlva', 'hu-HU');
+    speak(isMw ? 'Autópálya lehajtó 3 km múlva' : 'Lehajtó 2 km múlva', 'hu-HU');
     speak(isMw ? 'Lehajtó 500 méter múlva' : 'Lehajtó 300 méter múlva', 'hu-HU');
   }
 
-  // -------- POI frissítés az aktuális nézetből --------
-void _onMapMoved() {
-  _refreshPoisFromView();
-}
+  // --- POI frissítés ---
 
+  // NINCS paraméter → nem lesz MapPosition/MapCamera típushiba
+  void _onMapMoved() {
+    _refreshPoisFromView();
+  }
 
   Future<void> _refreshPoisFromView() async {
     if (_pois == null) return;
     final center = mapCtrl.camera.center;
     final zoomVal = mapCtrl.camera.zoom;
-    // durva BBox a zoom alapján (fokban)
-    final span = math.max(0.02, 2.0 / math.pow(2.0, (zoomVal - 8))); // kb.
+
+    final span = math.max(0.02, 2.0 / math.pow(2.0, (zoomVal - 8)));
     final west = center.longitude - span;
     final east = center.longitude + span;
     final south = center.latitude - span;
@@ -183,19 +193,20 @@ void _onMapMoved() {
   }
 
   Marker _mk(Map<String, Object?> r, IconData icon) => Marker(
-    point: LatLng((r['lat'] as num).toDouble(), (r['lon'] as num).toDouble()),
-    width: 36, height: 36,
-    child: Tooltip(
-      message: (r['name'] as String?) ?? (r['brand'] as String?) ?? '',
-      child: Icon(icon, size: 22, color: style=='day'? Colors.blueGrey : Colors.white),
-    ),
-  );
+        point: LatLng((r['lat'] as num).toDouble(), (r['lon'] as num).toDouble()),
+        width: 36,
+        height: 36,
+        child: Tooltip(
+          message: (r['name'] as String?) ?? (r['brand'] as String?) ?? '',
+          child: Icon(icon, size: 22, color: style == 'day' ? Colors.blueGrey : Colors.white),
+        ),
+      );
 
-  // ----------------------------------------------------
+  // --- UI ---
 
   @override
   Widget build(BuildContext ctx) {
-    final layerFut = _pmtiles != null ? pmtilesLayer(_pmtiles!, _theme!) : null;
+    final layerFut = _pmtiles != null && _theme != null ? pmtilesLayer(_pmtiles!, _theme!) : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -215,7 +226,7 @@ void _onMapMoved() {
       ),
       body: _pmtiles == null
           ? _noRegion(ctx)
-          : FutureBuilder(
+          : FutureBuilder<Widget>(
               future: layerFut,
               builder: (c, s) {
                 if (!s.hasData) return const Center(child: CircularProgressIndicator());
@@ -231,21 +242,23 @@ void _onMapMoved() {
                         }
                       },
                       onLongPress: (tapPos, point) {
-                        // hosszú nyomás: új waypoint
                         setState(() => wps = [...wps, Coord(point.longitude, point.latitude)]);
                         _saveState();
                       },
                     ),
                     children: [
-                      s.data as Widget,             // vektor csempék
+                      s.data!, // VectorTileLayer
                       PolylineLayer(polylines: lines),
-                      MarkerLayer(markers: poiMarkers), // <-- POI-k
+                      MarkerLayer(markers: poiMarkers),
                       MarkerLayer(
-                        markers: wps.map((w) => Marker(
-                          point: LatLng(w.lat, w.lon),
-                          width: 40, height: 40,
-                          child: const Icon(Icons.place, color: Colors.red),
-                        )).toList(),
+                        markers: wps
+                            .map((w) => Marker(
+                                  point: LatLng(w.lat, w.lon),
+                                  width: 40,
+                                  height: 40,
+                                  child: const Icon(Icons.place, color: Colors.red),
+                                ))
+                            .toList(),
                       ),
                     ],
                   ),
@@ -275,26 +288,37 @@ void _onMapMoved() {
           padding: const EdgeInsets.all(8),
           child: SingleChildScrollView(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Profil választó
               ProfilePicker(value: profile, onChanged: (k) => setState(() => profile = k)),
               const SizedBox(height: 6),
-
-              // Waypoint lista (kézi szerkesztéssel is)
               WaypointList(
                 wps: wps,
-                onChanged: (a) { setState(() => wps = a); _saveState(); },
+                onChanged: (a) {
+                  setState(() => wps = a);
+                  _saveState();
+                },
               ),
               const SizedBox(height: 6),
-
-              // POI kapcsolók
               PoiToggles(
-                parks: showParks, fuel: showFuel, services: showServices,
-                onParks: (v){ setState(()=> showParks=v); _saveState(); _refreshPoisFromView(); },
-                onFuel:  (v){ setState(()=> showFuel =v); _saveState(); _refreshPoisFromView(); },
-                onServices:(v){ setState(()=> showServices=v); _saveState(); _refreshPoisFromView(); },
+                parks: showParks,
+                fuel: showFuel,
+                services: showServices,
+                onParks: (v) {
+                  setState(() => showParks = v);
+                  _saveState();
+                  _refreshPoisFromView();
+                },
+                onFuel: (v) {
+                  setState(() => showFuel = v);
+                  _saveState();
+                  _refreshPoisFromView();
+                },
+                onServices: (v) {
+                  setState(() => showServices = v);
+                  _saveState();
+                  _refreshPoisFromView();
+                },
               ),
               const SizedBox(height: 6),
-
               Row(children: [
                 DropdownButton(
                   value: style,
@@ -302,25 +326,33 @@ void _onMapMoved() {
                     DropdownMenuItem(value: 'day', child: Text('Nappal')),
                     DropdownMenuItem(value: 'night', child: Text('Éjjel')),
                   ],
-                  onChanged: (v){ setState(()=> style = v as String); _initTheme(); _saveState(); },
+                  onChanged: (v) {
+                    setState(() => style = v as String);
+                    _initTheme();
+                    _saveState();
+                  },
                 ),
                 const SizedBox(width: 12),
                 DropdownButton(
                   value: zoom,
                   items: const [
                     DropdownMenuItem(value: 'near', child: Text('Közeli')),
-                    DropdownMenuItem(value: 'mid',  child: Text('Közepes')),
-                    DropdownMenuItem(value: 'far',  child: Text('Távoli')),
+                    DropdownMenuItem(value: 'mid', child: Text('Közepes')),
+                    DropdownMenuItem(value: 'far', child: Text('Távoli')),
                   ],
-                  onChanged: (v){ setState(()=> zoom = v as String); _saveState(); },
+                  onChanged: (v) {
+                    setState(() => zoom = v as String);
+                    _saveState();
+                  },
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(onPressed: _route, child: const Text('Útvonal')),
               ]),
               const SizedBox(height: 6),
-
               if (rr != null)
-                Text(' ${(rr!.distanceKm).toStringAsFixed(1)} km • ${rr!.durationMin.toStringAsFixed(0)} min • ETA ${rr!.eta.toLocal().toString().substring(11,16)} '),
+                Text(
+                  ' ${(rr!.distanceKm).toStringAsFixed(1)} km • ${rr!.durationMin.toStringAsFixed(0)} min • ETA ${rr!.eta.toLocal().toString().substring(11, 16)} ',
+                ),
             ]),
           ),
         ),
