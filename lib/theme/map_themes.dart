@@ -17,7 +17,7 @@ Future<Theme> createDayTheme() async {
   // Példa: (ha ismered a struktúrát) themeData['layers']... = ...
   // --------------------------------------------
 
-  return await ThemeReader(themeData: themeData).read();
+  return await ThemeReader().read(themeData);
 }
 
 /// Éjszakai, egyedi téma (async)
@@ -28,5 +28,5 @@ Future<Theme> createNightTheme() async {
   // Példa: themeData['layers']... = ...
   // --------------------------------------------
 
-  return await ThemeReader(themeData: themeData).read();
+  return await ThemeReader().read(themeData);
 }

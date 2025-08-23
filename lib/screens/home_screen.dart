@@ -1,30 +1,22 @@
 import 'dart:io';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:path_provider/path_provider.dart';
-
-
-
 // Saját szolgáltatások
 import '../services/tiles_provider.dart';
 import '../services/storage.dart';
 import '../services/tts.dart';
 import '../services/routing_engine.dart';
 import '../services/pois_db.dart';
-
 // Modelek
 import '../models/route_models.dart';
 import '../models/truck.dart';
-
 // Map témák (vector_tile_renderer alapú Theme)
-import '../theme/classic_day.dart';
-import '../theme/classic_night.dart';
+import '../theme/map_themes.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
-
 // Widgetek
 import '../widgets/waypoint_list.dart';
 import '../widgets/profile_picker.dart';
