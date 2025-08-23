@@ -1,15 +1,17 @@
 import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
+/// Egyedi éjszakai téma a Protomaps dark alapra építve.
 vtr.Theme classicNightTheme() {
   final base = vmt.ProtomapsThemes.dark();
 
   return base.copyWith(
     background: const vtr.BackgroundLayer(color: vtr.Color(0xFF141414)),
     layers: base.layers.map((l) {
+      // Autópályák – narancssárga
       if (l is vtr.LineLayer &&
           l.sourceLayer == 'roads' &&
-          (l.filter?.toString().contains('motorway') ?? false)) {
+          ((l.filter?.toString().contains('motorway')) ?? false)) {
         return l.copyWith(
           paint: l.paint.copyWith(
             color: const vtr.ColorStyle(vtr.Color(0xFFFF9A2A)),
@@ -17,6 +19,7 @@ vtr.Theme classicNightTheme() {
         );
       }
 
+      // Víz – sötétkék/zöldes
       if (l is vtr.FillLayer && l.sourceLayer == 'water') {
         return l.copyWith(
           paint: l.paint.copyWith(
