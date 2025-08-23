@@ -6,7 +6,7 @@ import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
 /// .pmtiles fájlból vektor csemperéteg létrehozása a FlutterMap-hez.
 /// - [pmtilesFile]: a régió tiles.pmtiles fájlja
-/// - [theme]: vektor renderelő téma (day/night)
+/// - [theme]: vektor rendererlő téma (day/night)
 Future<VectorTileLayer> pmtilesLayer(File pmtilesFile, vtr.Theme theme) async {
   if (!await pmtilesFile.exists()) {
     throw StateError('PMTiles file not found: ${pmtilesFile.path}');
@@ -20,7 +20,8 @@ Future<VectorTileLayer> pmtilesLayer(File pmtilesFile, vtr.Theme theme) async {
 
   return VectorTileLayer(
     theme: theme,
-    // A 'protomaps' kulcsnév maradjon; a ProtomapsThemes ezt várja forrásként.
+    // A 'protomaps' kulcsnév maradjon; a ProtomapsThemes ezt várja forrásként
     tileProviders: TileProviders({'protomaps': prov}),
   );
 }
+
