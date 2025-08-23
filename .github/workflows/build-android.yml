@@ -22,28 +22,24 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.0'   # maradhat, vagy hagyd üresen a latest stable-hez
           channel: 'stable'
-          cache: true
+          flutter-version: '3.13.0'
 
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      # <<< EZ A LÉPÉS A LÉNYEG: létrehozza az android/ projektet, ha hiányzik >>>
-      - name: Generate platforms if missing
+      # Ha véletlenül nincs android/ mappa, generáljuk le.
+      - name: Ensure Android folder exists
         run: |
-          if [ ! -d "android" ]; then
-            flutter create .
+          if [ ! -d android ]; then
+            flutter create . --platforms=android
           fi
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build release APK
+      - name: Build APK (release)
         run: flutter build apk --release
 
-      - name: Upload artifact (APK)
-        uses: actions/upload-artifact@v3
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
         with:
-          name: release-apk
+          name: android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
