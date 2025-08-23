@@ -23,7 +23,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.13.0'
+          flutter-version: 'latest'
 
       # Ha véletlenül nincs android/ mappa, generáljuk le.
       - name: Ensure Android folder exists
