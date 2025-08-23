@@ -7,7 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:path_provider/path_provider.dart';
-
+import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 import '../services/tiles_provider.dart';
 import '../services/storage.dart';
 import '../services/tts.dart';
@@ -27,8 +27,9 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeState();
 }
 
-class _HomeState extends State<HomeScreen> {
-  Theme? _theme; // map theme
+class _HomeState extends State<HomeScreen> 
+
+vtr.Theme? _theme; // map theme (vector_tile_renderer)
   File? _pmtiles;
   File? _poisFile;         // <-- POI adatbázis fájl
   PoisDB? _pois;           // <-- megnyitott db
@@ -142,10 +143,10 @@ class _HomeState extends State<HomeScreen> {
   }
 
   // -------- POI frissítés az aktuális nézetből --------
-  void _onMapMoved(MapPosition pos) {
-    // amikor a user mozgat/zoomol, frissítjük a POI-kat (debounce-olhatnád is)
-    _refreshPoisFromView();
-  }
+void _onMapMoved() {
+  _refreshPoisFromView();
+}
+
 
   Future<void> _refreshPoisFromView() async {
     if (_pois == null) return;
@@ -226,7 +227,7 @@ class _HomeState extends State<HomeScreen> {
                       zoom: zoom == 'near' ? 15 : zoom == 'mid' ? 13 : 11,
                       onMapEvent: (evt) {
                         if (evt is MapEventMoveEnd || evt is MapEventRotateEnd || evt is MapEventZoomEnd) {
-                          _onMapMoved(mapCtrl.camera);
+                          _onMapMoved();
                         }
                       },
                       onLongPress: (tapPos, point) {
