@@ -1,0 +1,50 @@
+name: bootstrap-android
+on:
+  workflow_dispatch:
+
+jobs:
+  gen-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.3"
+          channel: stable
+          cache: true
+
+      # Csak sablont generál – NEM buildel!
+      - name: Generate android skeleton
+        run: flutter create --platforms=android .
+
+      # minSdk kényszerítése 30-ra MINDKÉT gradle formátumban + override property
+      - name: Force minSdkVersion = 30
+        run: |
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk(Version)?[[:space:]]*=?[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
+          fi
+          mkdir -p android
+          echo "flutter.minSdkVersion=30" >> android/gradle.properties
+          echo "== VERIFY =="
+          grep -R --line-number -E 'minSdk|flutter.minSdkVersion' android/ || true
+
+      # Az elkészült android/ mappa VISSZACOMMITOLÁSA a repóba
+      - name: Commit android/ into repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android
+          git commit -m "bootstrap(android): add android/ skeleton with minSdkVersion 30" || echo "Nothing to commit"
+          git push
