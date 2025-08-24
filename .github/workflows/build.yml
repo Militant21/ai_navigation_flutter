@@ -38,20 +38,48 @@ jobs:
       - name: Patch Gradle (8.3) and AGP (8.1.0)
         run: |
           set -e
+          # Gradle wrapper
           if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
             sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
           fi
+          # AGP root
           for f in android/build.gradle android/build.gradle.kts; do
             [ -f "$f" ] || continue
             sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g' "$f"
           done
 
-      # Ezeket közvetlenül a build előtt futtatjuk!
+      - name: Force minSdk=30 everywhere
+        run: |
+          set -e
+          # gradle.properties
+          if [ -f android/gradle.properties ]; then
+            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
+              sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
+            else
+              echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+            fi
+          else
+            echo 'flutter.minSdkVersion=30' > android/gradle.properties
+          fi
+
+          # app/build.gradle (Groovy)
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion [0-9]+/minSdkVersion 30/' android/app/build.gradle || true
+            grep -q 'minSdkVersion' android/app/build.gradle || sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
+          fi
+
+          # app/build.gradle.kts (Kotlin DSL)
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk\s*=\s*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
+            grep -q 'minSdk' android/app/build.gradle.kts || sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+          fi
+
       - name: Override minSdkVersion to 30 right before build
         run: |
           set -e
           sed -i 's/minSdkVersion 21/minSdkVersion 30/g' android/app/build.gradle || true
           sed -i 's/minSdkVersion=21/minSdkVersion=30/g' android/gradle.properties || true
+          sed -i 's/minSdk = 21/minSdk = 30/g' android/app/build.gradle.kts || true
 
       - name: Strip <uses-sdk> from plugin manifests
         run: |
