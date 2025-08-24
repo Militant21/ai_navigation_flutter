@@ -14,8 +14,10 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
+      - name: Java version
+        run: java -version
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
