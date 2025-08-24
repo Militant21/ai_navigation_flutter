@@ -12,3 +12,10 @@
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: ignore
+
+      - name: Upload android folder (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-folder
+          path: android
