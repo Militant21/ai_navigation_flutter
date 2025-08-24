@@ -43,3 +43,13 @@ jobs:
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+  - name: Force minSdkVersion 30 in gradle files
+    run: |
+      if [ -f android/app/build.gradle ]; then
+        sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle
+      fi
+      if [ -f android/app/build.gradle.kts ]; then
+        sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
+        sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*[0-9]+/minSdkVersion = 30/' android/app/build.gradle.kts || true
+      fi
+      grep -q '^flutter\.minSdkVersion=30$' android/gradle.properties || echo 'flutter.minSdkVersion=30' >> android/gradle.properties
