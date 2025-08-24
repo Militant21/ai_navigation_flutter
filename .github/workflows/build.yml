@@ -24,36 +24,38 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Ensure Android folder exists
-        run: flutter create --platforms=android .
-
       - name: flutter pub get
         run: flutter pub get
+
+      - name: Patch Gradle 8.3 + AGP 8.1.0
+        run: |
+          echo "== Gradle wrapper =="
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          fi
+
+          echo "== AGP 8.1.0 =="
+          find android -name "build.gradle*" | while read -r f; do
+            sed -i 's/com.android.tools.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.1.0/' "$f"
+          done
 
       - name: Build APK (release) with minSdk override
         run: |
           set -e
           echo "== Checking and fixing minSdk values =="
-          # app build.gradle
           if grep -q "minSdkVersion 21" android/app/build.gradle; then
             sed -i 's/minSdkVersion 21/minSdkVersion 30/' android/app/build.gradle
-            echo "Patched android/app/build.gradle"
           fi
           if grep -q "minSdk = 21" android/app/build.gradle.kts; then
             sed -i 's/minSdk = 21/minSdk = 30/' android/app/build.gradle.kts
-            echo "Patched android/app/build.gradle.kts"
           fi
           if grep -q "minSdkVersion=21" android/gradle.properties; then
             sed -i 's/minSdkVersion=21/minSdkVersion=30/' android/gradle.properties
-            echo "Patched android/gradle.properties"
           fi
 
           echo "== Cleaning plugin manifests =="
           find build -name AndroidManifest.xml | while read -r f; do
-            if grep -q "<uses-sdk" "$f"; then
-              sed -i -E '/<uses-sdk.*>/d' "$f"
-              echo "Cleaned <uses-sdk> in $f"
-            fi
+            sed -i -E '/<uses-sdk.*>/d' "$f"
           done
 
           echo "== Starting release build =="
