@@ -16,12 +16,11 @@ Future<VectorTileLayer> pmtilesLayer(File pmtilesFile, vtr.Theme theme) async {
   }
 
   // Helyes provider példányosítás (konstruktor, nem fromFile)
-  final prov = PmTilesVectorTileProvider(
-    pmtilesFile.path,
-    maximumZoom: 14,
-  );
-
-  // A Protomaps témák a 'protomaps' forrásnévre számítanak.
+  final prov = await PmTilesVectorTileProvider.fromFile(
+  pmtilesFile.path,
+  maximumZoom: 14,
+);
+// A Protomaps témák a 'protomaps' forrásnévre számítanak.
   return VectorTileLayer(
     theme: theme,
     tileProviders: TileProviders({'protomaps': prov}),
