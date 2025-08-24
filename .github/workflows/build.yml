@@ -28,42 +28,81 @@ jobs:
           channel: stable
           cache: true
 
+      # 1) android/ létrehozása
       - name: Ensure Android folder exists
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android .
           fi
 
+      # 2) Gradle 8.3 + AGP 8.1.0 (Java 21 kompat)
+      - name: Bump Gradle 8.3 + AGP 8.1.0 (for Java 21)
+        run: |
+          set -e
+          # Gradle wrapper -> 8.3
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+            echo "== wrapper =="
+            grep -n '^distributionUrl=' android/gradle/wrapper/gradle-wrapper.properties || true
+          fi
+
+          # AGP -> 8.1.0 (Groovy)
+          if [ -f android/build.gradle ]; then
+            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/' android/build.gradle
+          fi
+          # AGP -> 8.1.0 (KTS) – ha plugins blokkal van megadva, ez általában rendben van AGP8-ra,
+          # de biztos ami biztos, próbáljuk kicserélni a régi coords-ot is, ha előfordul:
+          if [ -f android/build.gradle.kts ]; then
+            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/' android/build.gradle.kts || true
+          fi
+
+      # 3) minSdk=30 mindenhol
       - name: Force minSdkVersion 30 (Groovy/KTS + gradle.properties)
         run: |
           set -e
-          # --- Groovy build.gradle ---
+          echo "== Force minSdk -> 30 =="
+
+          # Groovy: android/app/build.gradle
           if [ -f android/app/build.gradle ]; then
-            sed -i -E "s/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/" android/app/build.gradle || true
-            if ! grep -q "minSdkVersion" android/app/build.gradle; then
+            sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+.*/        minSdkVersion 30/' android/app/build.gradle || true
+            grep -q 'minSdkVersion' android/app/build.gradle || \
               sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
-            fi
           fi
-          # --- Kotlin build.gradle.kts ---
+
+          # Kotlin DSL: android/app/build.gradle.kts
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E "s/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/" android/app/build.gradle.kts || true
-            if ! grep -q "minSdk[[:space:]]*=" android/app/build.gradle.kts; then
+            sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*.*/        minSdk = 30/' android/app/build.gradle.kts || true
+            grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts || \
               sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
-            fi
           fi
-          # --- Flutter kulcs: gradle.properties ---
+
+          # Flutter kulcs: android/gradle.properties
           if [ -f android/gradle.properties ]; then
-            if grep -q "^flutter.minSdkVersion=" android/gradle.properties; then
-              sed -i -E "s/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/" android/gradle.properties
+            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
+              sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
             else
-              echo "flutter.minSdkVersion=30" >> android/gradle.properties
+              echo 'flutter.minSdkVersion=30' >> android/gradle.properties
             fi
           else
-            echo "flutter.minSdkVersion=30" > android/gradle.properties
+            echo 'flutter.minSdkVersion=30' > android/gradle.properties
           fi
-          echo "== check =="
-          grep -n "minSdk" android/app/build.gradle* 2>/dev/null || true
-          grep -n "^flutter.minSdkVersion" android/gradle.properties 2>/dev/null || true
+
+          echo "== CHECK =="
+          grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
+          grep -n '^flutter.minSdkVersion' android/gradle.properties 2>/dev/null || true
+
+      # (opcionális) Modul szintű compile target 17 – AGP8 ajánlás
+      - name: (Optional) Set Java/Kotlin compile level 17 for app module
+        run: |
+          set -e
+          if [ -f android/app/build.gradle ]; then
+            grep -q 'compileOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
+            grep -q 'kotlinOptions'  android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            grep -q 'compileOptions' android/app/build.gradle.kts || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
+            sed -i -E 's/jvmTarget[[:space:]]*=[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle.kts || true
+          fi
 
       - name: Flutter pub get
         run: flutter pub get
@@ -78,6 +117,6 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
 
 # MEGJEGYZÉS:
-# A korábbi futások azért hasaltak el, mert a Flutter default minSdk=21-et generált.
-# Ezt most minden lehetséges helyen 30-ra kényszerítjük (Groovy, KTS, gradle.properties).
-# Szándékosan NINCS ideiglenes 't' vagy '.tmp' fájl, nincs awk patch-orgia.
+# A hiba oka: a Flutter sablon Gradle 7.6.x-et rak, ami Java 21-gyel "Unsupported class file major version 65".
+# Fix: flutter create UTÁN azonnal wrapper=8.3 és AGP=8.1.0 patch, majd minSdk=30 kényszerítés.
+# Nincs ideiglenes fájl, csak sed + ellenőrző grep.
