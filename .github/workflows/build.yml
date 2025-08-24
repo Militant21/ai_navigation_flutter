@@ -1,4 +1,4 @@
-name: Flutter APK CI
+name: ci-build
 on: [push, workflow_dispatch]
 jobs:
   build:
@@ -10,28 +10,27 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: {flutter-version: '3.22.3', channel: stable, cache: true}
 
-      - name: Ensure android/ exists
+      - name: Ensure android
         run: flutter create --platforms=android .
 
-      - name: Patch Gradle 8.3 + AGP 8.1.0
+      - name: Gradle 8.3 + AGP 8.1.0
         run: |
           sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
 
-      - name: Force minSdk=33 + strip <uses-sdk> from app manifest
+      - name: Force minSdk=33 (brutal + verify)
         run: |
-          # gradle.properties override
-          f=android/gradle.properties; [ -f "$f" ] || touch "$f"
-          grep -q '^flutter.minSdkVersion=' "$f" && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' "$f" || echo 'flutter.minSdkVersion=33' >> "$f"
-          # defaultConfig -> property
-          sed -i -E "s/(defaultConfig[[:space:]]*\{[^}]*minSdkVersion)[[:space:]]+[0-9]+/\\1 flutter.minSdkVersion/" android/app/build.gradle || true
-          sed -i -E "s/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/" android/app/build.gradle.kts || true
-          # **EZ A LÉNYEG**: töröljük az app manifestből az <uses-sdk> sort
-          for m in android/app/src/**/AndroidManifest.xml; do
-            [ -f "$m" ] && sed -i -E '/<uses-sdk[^>]*>/d' "$m"
-          done
+          set -e
+          [ -f android/app/build.gradle ] && sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 33/g' android/app/build.gradle || true
+          [ -f android/app/build.gradle.kts ] && sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/g' android/app/build.gradle.kts || true
+          if grep -q '^flutter.minSdkVersion=' android/gradle.properties 2>/dev/null; then sed -i -E 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/'; else echo 'flutter.minSdkVersion=33' >> android/gradle.properties; fi
+          echo '--- VERIFY ---'; grep -n 'minSdk' android/app/build.gradle || true; grep -n 'minSdk' android/app/build.gradle.kts || true; grep -n '^flutter.minSdkVersion' android/gradle.properties || true
 
       - run: flutter pub get
+
+      - name: Strip plugin uses-sdk (best-effort)
+        run: if [ -d build ]; then find build -type f -name AndroidManifest.xml -print0 | xargs -0 -I{} sed -i -E '/<uses-sdk/d' "{}"; fi
+
       - run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
