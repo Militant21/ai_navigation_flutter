@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,48 +27,98 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Android SDK components (34 + tools) with retry
-        run: |
-          set -e
-          n=0
-          until [ $n -ge 3 ]
-          do
-            yes | sdkmanager --licenses && \
-            sdkmanager "platforms;android-34" "platform-tools" "build-tools;34.0.0" && break
-            n=$((n+1))
-            echo "Retrying SDK install... ($n/3)"
-            sleep 10
-          done
-          if [ $n -ge 3 ]; then
-            echo "SDK install failed after 3 attempts" >&2
-            exit 1
-          fi
-
-      - name: Ensure Android folder exists
+      - name: Ensure Android folder exists (one-time)
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android .
           fi
 
+      - name: flutter pub get
+        run: flutter pub get
+
+      # ── ITT telepítjük erőből az SDK 34-et (cmdline-tools + retry) ──
+      - name: Install Android SDK 34 + Build-Tools 34.0.0 (accept licenses, with retries)
+        shell: bash
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/emulator:${PATH}
+        run: |
+          set -euo pipefail
+          SDK="$ANDROID_SDK_ROOT"
+          mkdir -p "$SDK"
+
+          if ! command -v sdkmanager >/dev/null 2>&1; then
+            echo "== cmdline-tools missing, downloading =="
+            curl -sSL https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -o /tmp/clt.zip
+            mkdir -p "$SDK/cmdline-tools"
+            rm -rf "$SDK/cmdline-tools/latest"
+            unzip -q /tmp/clt.zip -d /tmp/clt
+            mv /tmp/clt/cmdline-tools "$SDK/cmdline-tools/latest"
+          fi
+
+          echo "== sdkmanager =="
+          which sdkmanager || true
+          sdkmanager --version || true
+
+          for i in {1..3}; do
+            echo "== accept licenses attempt $i =="
+            yes | sdkmanager --licenses && break || sleep 2
+          done
+
+          PKGS=("platform-tools" "platforms;android-34" "build-tools;34.0.0")
+
+          install_pkgs () { yes | sdkmanager "${PKGS[@]}"; }
+
+          ok=0
+          for i in {1..4}; do
+            echo "== install attempt $i =="
+            if install_pkgs; then ok=1; break; fi
+            yes | sdkmanager --update || true
+            sleep 3
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::Android SDK install failed after retries"
+            exit 1
+          fi
+
+          echo "== verify =="
+          ls -la "$SDK/platforms" || true
+          ls -la "$SDK/build-tools" || true
+          sdkmanager --list | grep -E "platforms;android-34|build-tools;34.0.0" || true
+      # ─────────────────────────────────────────────────────────────────
+
       - name: Set Gradle wrapper 8.3
         run: |
-          sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          set -e
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+          fi
 
       - name: Force minSdk=30 + JVM target 17 in app
         run: |
           set -e
           if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/minSdkVersion [0-9]+/minSdkVersion 30/' android/app/build.gradle || true
-            grep -q 'minSdkVersion' android/app/build.gradle || sed -i "/defaultConfig {/a\        minSdkVersion 30" android/app/build.gradle
+            sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+.*/        minSdkVersion 30/' android/app/build.gradle || true
+            grep -q 'minSdkVersion' android/app/build.gradle || sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
+            grep -q 'compileOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
+            grep -q 'kotlinOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*.*/        minSdk = 30/' android/app/build.gradle.kts || true
+            grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts || sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+            grep -q 'compileOptions' android/app/build.gradle.kts || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
+            sed -i -E 's/jvmTarget[[:space:]]*=[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle.kts || true
           fi
           if [ -f android/gradle.properties ]; then
-            grep -q '^flutter.minSdkVersion' android/gradle.properties \
-              && sed -i -E 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties \
-              || echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
+              sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
+            else
+              echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+            fi
+          else
+            echo 'flutter.minSdkVersion=30' > android/gradle.properties
           fi
-
-      - name: flutter pub get
-        run: flutter pub get
 
       - name: Build APK (release)
         run: flutter build apk --release
