@@ -43,62 +43,28 @@ jobs:
 
       # minSdk=28 kényszerítése mindenhol
       - name: Force minSdk=28 (Groovy/KTS + gradle.properties)
-        shell: bash
         run: |
           set -e
-          # Groovy
+          echo "== set minSdkVersion to 28 =="
+          # Groovy build.gradle
           if [ -f android/app/build.gradle ]; then
-            # ha van explicit minSdkVersion sor
-            sed -i -E 's/^\s*minSdkVersion\s+[0-9]+/        minSdkVersion 28/' android/app/build.gradle || true
-            # ha nincs, akkor a defaultConfig blokkba injektáljuk (egyszerű, nem rombol)
-            grep -q 'minSdkVersion' android/app/build.gradle || \
-              awk '1;/defaultConfig\s*\{/{print "        minSdkVersion 28"}' android/app/build.gradle > /tmp/app.groovy && mv /tmp/app.groovy android/app/build.gradle
+            sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+[0-9]+/        minSdkVersion 28/' android/app/build.gradle || true
+            if ! grep -q 'minSdkVersion[[:space:]]*28' android/app/build.gradle; then
+              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdkVersion 28";next}1' android/app/build.gradle > /tmp/_app.gradle && mv /tmp/_app.gradle android/app/build.gradle
+            fi
           fi
-
-          # KTS
+          # Kotlin KTS build.gradle.kts
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/^\s*minSdk\s*=\s*[0-9]+/        minSdk = 28/' android/app/build.gradle.kts || true
-            grep -q 'minSdk\s*=' android/app/build.gradle.kts || \
-              awk '1;/defaultConfig\s*\{/{print "        minSdk = 28"}' android/app/build.gradle.kts > /tmp/app.kts && mv /tmp/app.kts android/app/build.gradle.kts
+            sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*[0-9]+/        minSdk = 28/' android/app/build.gradle.kts || true
+            if ! grep -q 'minSdk[[:space:]]*=[[:space:]]*28' android/app/build.gradle.kts; then
+              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdk = 28";next}1' android/app/build.gradle.kts > /tmp/_app.kts && mv /tmp/_app.kts android/app/build.gradle.kts
+            fi
           fi
-
-          # Flutter override lehetősége
+          # Flutter override kulcs (ha van)
           if [ -f android/gradle.properties ]; then
-            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
+            if grep -q ^flutter.minSdkVersion android/gradle.properties; then
               sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=28/' android/gradle.properties
             else
               echo 'flutter.minSdkVersion=28' >> android/gradle.properties
             fi
           fi
-
-      # pluginek manifestjeiből <uses-sdk> törlése (csak a build mappában)
-      - name: Strip <uses-sdk> from plugin manifests (build dir)
-        shell: bash
-        run: |
-          set -e
-          if [ -d build ]; then
-            find build -type f -name AndroidManifest.xml -print0 | xargs -0 -I{} sed -i -E '/<uses-sdk.*>/d' "{}"
-          fi
-
-      - name: flutter pub get
-        run: flutter pub get
-
-      - name: Build APK (release)
-        run: flutter build apk --release
-
-      # Artefaktok: mindig töltsük fel az android/ mappát,
-      # és az APK-t, ha létezik.
-      - name: Upload android folder (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-folder
-          path: android
-
-      - name: Upload release APK (if exists)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: ignore
