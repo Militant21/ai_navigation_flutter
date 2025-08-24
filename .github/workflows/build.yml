@@ -1,7 +1,7 @@
-name: CI
+name: Flutter APK CI
 on: [push, workflow_dispatch]
 jobs:
-  b:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -9,24 +9,34 @@ jobs:
         with: {distribution: temurin, java-version: '21'}
       - uses: subosito/flutter-action@v2
         with: {flutter-version: '3.22.3', channel: stable, cache: true}
+
       - name: Ensure Android folder
         run: flutter create --platforms=android .
-      - name: Strip app <uses-sdk>
-        run: find android/app/src -name AndroidManifest.xml -exec sed -i -E '/<uses-sdk[^>]*>/d' {} \;
-      - name: Patch Gradle/AGP
+
+      - name: Patch Gradle 8.3 + AGP 8.1.0
         run: |
           sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
+
       - name: Set minSdk=33 (property) + enforce
         run: |
           grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
           [ -f android/app/build.gradle ] && sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
           [ -f android/app/build.gradle.kts ] && sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts || true
+
+      - name: Strip app <uses-sdk> (multiline-safe)
+        run: |
+          for f in $(find android/app/src -name AndroidManifest.xml); do
+            awk 'BEGIN{skip=0} /<uses-sdk/ {skip=1} skip&&/\/>/ {skip=0;next} skip{next} {print}' "$f" > /tmp/m && mv /tmp/m "$f"
+          done
+
       - run: flutter pub get
       - run: flutter build apk --release
+
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: android-folder, path: android}
+
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
