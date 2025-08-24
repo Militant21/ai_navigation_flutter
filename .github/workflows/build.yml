@@ -38,7 +38,7 @@ jobs:
             sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/'                 android/app/build.gradle || true
           fi
           if [ -f android/app/build.gradle.kts ]; then
-            # Kotlin DSL-ben gyakori a: defaultConfig { minSdk = 21 }
+            # Kotlin DSL-ben gyakori a: defaultConfig { minSdk = 30 }
             sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/'                 android/app/build.gradle.kts || true
             # vagy ritkábban: minSdkVersion = 21
             sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*[0-9]+/minSdkVersion = 30/'   android/app/build.gradle.kts || true
