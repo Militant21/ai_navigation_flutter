@@ -1,5 +1,6 @@
 name: Flutter APK CI
 on: [push, workflow_dispatch]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,27 +19,51 @@ jobs:
           sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
 
-      - name: Set minSdk=33 (property) + enforce
+      - name: Force minSdk=33 (single source)
         run: |
-          grep -q '^flutter.minSdkVersion=' android/gradle.properties \
-            && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties \
-            || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
-          [ -f android/app/build.gradle ] && sed -i -E \
-            's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
-          [ -f android/app/build.gradle.kts ] && sed -i -E \
-            's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts || true
+          # 1) gradle.properties – minden régi sort törlünk, majd 33-at írunk
+          sed -i '/^flutter\.minSdkVersion=/d' android/gradle.properties || true
+          echo 'flutter.minSdkVersion=33' >> android/gradle.properties
+          # 2) app/build.gradle – szám helyett property
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = flutter.minSdkVersion/' android/app/build.gradle
+          fi
+          # 3) app/build.gradle.kts – ha KTS lenne
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts
+          fi
 
       - name: Strip app <uses-sdk> (multiline-safe) + verify
         run: |
           set -e
           for f in $(find android/app/src -name AndroidManifest.xml); do
-            # Törlés akár több soros elem esetén is
             perl -0777 -pe 's/<uses-sdk[\s\S]*?\/>\s*//g' -i "$f"
           done
-          echo "---- grep after strip (should be empty) ----"
-          grep -R "<uses-sdk" android/app/src || echo "OK: nincs <uses-sdk> az app manifesztekben"
+          echo "---- AFTER STRIP: searching for <uses-sdk in app manifests (should be empty) ----"
+          if grep -R "<uses-sdk" android/app/src; then
+            echo "ERROR: még maradt <uses-sdk> az appban" && exit 1
+          else
+            echo "OK: nincs <uses-sdk> az appban"
+          fi
+
+      - name: Show resolved minSdk before build
+        run: |
+          echo "===== android/gradle.properties ====="
+          cat android/gradle.properties || true
+          echo "===== app/build.gradle (minSdk sorok) ====="
+          grep -n 'minSdk' android/app/build.gradle || true
 
       - run: flutter pub get
+
+      - name: Build (Gradle task to produce merged manifest), then inspect
+        run: |
+          cd android
+          ./gradlew :app:processReleaseMainManifest --no-daemon
+          echo "===== Merged manifest minSdk (grep) ====="
+          M=$(ls app/build/intermediates/merged_manifest/release/AndroidManifest.xml)
+          sed -n '1,120p' "$M" | grep -n "uses-sdk" || echo "No <uses-sdk> in merged manifest (OK)"
+          cd ..
       - run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
