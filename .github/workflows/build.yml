@@ -8,26 +8,29 @@ jobs:
     - uses: actions/setup-java@v4
       with: {distribution: temurin, java-version: '21'}
     - uses: subosito/flutter-action@v2
-      with: {flutter-version: '3.22.3', channel: stable, cache: true}
+      with: {channel: stable, cache: true}
     - name: Ensure Android folder
       run: '[ -d android ] || flutter create --platforms=android .'
-    - name: Patch Gradle 8.11.1 + AGP 8.1.0 + SDKs
+    - name: Patch Gradle 8.11.1 + AGP 8.7.2
       run: |
-        sed -i -E 's#distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties || true
-        sed -i -E 's/(id "com\.android\.application" version ")[0-9.]+/\18.1.0/' android/build.gradle || true
-        sed -i -E 's/(id "com\.android\.library" version ")[0-9.]+/\18.1.0/' android/build.gradle || true
-        grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=24/' android/gradle.properties || echo 'flutter.minSdkVersion=24'>>android/gradle.properties
-        grep -q '^flutter.compileSdkVersion=' android/gradle.properties && sed -i 's/^flutter.compileSdkVersion=.*/flutter.compileSdkVersion=34/' android/gradle.properties || echo 'flutter.compileSdkVersion=34'>>android/gradle.properties
-        grep -q '^flutter.targetSdkVersion=' android/gradle.properties && sed -i 's/^flutter.targetSdkVersion=.*/flutter.targetSdkVersion=34/' android/gradle.properties || echo 'flutter.targetSdkVersion=34'>>android/gradle.properties
-        sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 24/' android/app/build.gradle || true
-        sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 24/' android/app/build.gradle || true
-        sed -i -E '/<uses-sdk/d' android/app/src/main/AndroidManifest.xml || true
-    - run: flutter pub get
-    - name: Build APK
+        sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
+        sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|' android/build.gradle || true
+    - name: Force SDKs (compile/target/min = 34)
+      run: |
+        {
+          echo 'flutter.compileSdkVersion=34'
+          echo 'flutter.targetSdkVersion=34'
+          echo 'flutter.minSdkVersion=34'
+        } >> android/gradle.properties
+        sed -i -E "s/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/" android/app/build.gradle || true
+        sed -i -E "s/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/"   android/app/build.gradle || true
+        sed -i -E "s/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/"            android/app/build.gradle || true
+    - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
+      run: |
+        find android/app/src -name AndroidManifest.xml -exec sed -i '/<uses-sdk/,/>/d' {} \;
+    - name: flutter pub get
+      run: flutter pub get
+    - name: Build APK (release)
       run: flutter build apk --release
     - uses: actions/upload-artifact@v4
-      with:
-        name: android-apk
-        path: |
-          build/app/outputs/flutter-apk/*.apk
-          android
+      with: {name: apk-release, path: build/app/outputs/flutter-apk/*.apk}
