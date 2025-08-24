@@ -18,24 +18,50 @@ jobs:
         sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
         sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
 
-    - name: Strip app <uses-sdk> (multiline-safe) + verify
+    - name: Strip <uses-sdk> from APP manifest (multiline-safe) and show it
       run: |
         f=android/app/src/main/AndroidManifest.xml
-        [ -f "$f" ] && perl -0777 -pe 's/<uses-sdk\b[^>]*>\s*//g' -i "$f" || true
-        echo "== APP AndroidManifest head =="; sed -n '1,120p' "$f" || true
+        if [ -f "$f" ]; then
+          perl -0777 -pe 's/<uses-sdk\b[^>]*>\s*//g' -i "$f"
+          nl -ba "$f" | sed -n '1,160p'
+          echo "---- grep uses-sdk (should be empty) ----"
+          grep -n "<uses-sdk" "$f" || echo "OK: no <uses-sdk> in APP manifest"
+        else
+          echo "MISSING: $f"; exit 1
+        fi
 
-    - name: Force minSdkVersion=33
+    - name: Force minSdkVersion=33 in Gradle (app + property)
       run: |
-        grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
-        [ -f android/app/build.gradle ] && sed -i -E 's/\bminSdkVersion\b[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
-        [ -f android/app/build.gradle.kts ] && sed -i -E 's/\bminSdk\b[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts || true
+        # gradle.properties (Flutter mintához)
+        grep -q '^flutter.minSdkVersion=' android/gradle.properties \
+          && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties \
+          || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
+        # app/build.gradle (Groovy): szám -> property
+        if [ -f android/app/build.gradle ]; then
+          sed -i -E 's/\bminSdkVersion\b[[:space:]]+[0-9]+/minSdkVersion 33/' android/app/build.gradle
+          sed -i -E 's/\bminSdk\b[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle
+          echo "---- app/build.gradle minSdk lines ----"
+          nl -ba android/app/build.gradle | grep -nE 'minSdk|minSdkVersion' || true
+        fi
+        # app/build.gradle.kts (Kotlin DSL): minSdk = 33
+        if [ -f android/app/build.gradle.kts ]; then
+          sed -i -E 's/\bminSdk\b[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts
+          echo "---- app/build.gradle.kts minSdk lines ----"
+          nl -ba android/app/build.gradle.kts | grep -nE 'minSdk' || true
+        fi
 
     - run: flutter pub get
 
-    - name: Build (Gradle task to produce merged manifest), then inspect
+    - name: Show resolved Gradle properties (minSdkVersion) BEFORE merge
       run: |
         cd android
-        ./gradlew -q :app:processReleaseMainManifest
+        ./gradlew -q :app:properties | sed -n '1,180p' | grep -i 'minSdk'
+        cd ..
+
+    - name: Produce merged manifest only (for inspection)
+      run: |
+        cd android
+        ./gradlew :app:processReleaseMainManifest --stacktrace
         echo "== Merged manifest uses-sdk =="
         grep -n "uses-sdk" app/build/intermediates/merged_manifest/release/AndroidManifest.xml || true
         cd ..
