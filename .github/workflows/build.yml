@@ -1,0 +1,56 @@
+name: build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.3"
+          channel: "stable"
+          cache: true
+
+      # >>> EZ LÉTREHOZZA AZ android/ MAPPÁT A CI-BEN <<<
+      - name: Generate android platform
+        run: flutter create --platforms=android .
+
+      # minSdkVersion -> 24 (app/build.gradle vagy build.gradle.kts, amelyik létezik)
+      - name: Bump minSdkVersion to 24
+        run: |
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 24/' android/app/build.gradle
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk(Version)?[[:space:]]*=?[[:space:]]*[0-9]+/minSdk = 24/' android/app/build.gradle.kts
+          fi
+
+      # Dependenciák
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # Release APK build
+      - name: Build release APK
+        run: flutter build apk --release
+
+      # Artifact feltöltés
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
