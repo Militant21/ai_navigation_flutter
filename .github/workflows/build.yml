@@ -1,6 +1,5 @@
 name: Flutter APK CI
 on: [push, workflow_dispatch]
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,7 +10,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: {flutter-version: '3.22.3', channel: stable, cache: true}
 
-      - name: Ensure Android folder exists
+      - name: Ensure android/ exists
         run: flutter create --platforms=android .
 
       - name: Patch Gradle 8.3 + AGP 8.1.0
@@ -19,16 +18,18 @@ jobs:
           sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
 
-      - name: Force minSdk=33
+      - name: Force minSdk=33 + strip <uses-sdk> from app manifest
         run: |
-          f=android/gradle.properties
-          [ -f "$f" ] || touch "$f"
-          if grep -q '^flutter.minSdkVersion=' "$f"; then
-            sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' "$f"
-          else
-            echo 'flutter.minSdkVersion=33' >> "$f"
-          fi
+          # gradle.properties override
+          f=android/gradle.properties; [ -f "$f" ] || touch "$f"
+          grep -q '^flutter.minSdkVersion=' "$f" && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' "$f" || echo 'flutter.minSdkVersion=33' >> "$f"
+          # defaultConfig -> property
           sed -i -E "s/(defaultConfig[[:space:]]*\{[^}]*minSdkVersion)[[:space:]]+[0-9]+/\\1 flutter.minSdkVersion/" android/app/build.gradle || true
+          sed -i -E "s/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/" android/app/build.gradle.kts || true
+          # **EZ A LÉNYEG**: töröljük az app manifestből az <uses-sdk> sort
+          for m in android/app/src/**/AndroidManifest.xml; do
+            [ -f "$m" ] && sed -i -E '/<uses-sdk[^>]*>/d' "$m"
+          done
 
       - run: flutter pub get
       - run: flutter build apk --release
