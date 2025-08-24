@@ -29,6 +29,8 @@ jobs:
       # Android platform generálása
       - name: Generate android platform
         run: flutter create --platforms=android .
+      - name: Set minSdkVersion property to 30
+        run: echo "flutter.minSdkVersion=30" >> android/gradle.properties
 
       # Átírjuk a generált build.gradle(.kts)-t 30-ra
       - name: Force minSdkVersion 30 in build.gradle
