@@ -20,15 +20,23 @@ jobs:
 
       - name: Set minSdk=33 (property) + enforce
         run: |
-          grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
-          [ -f android/app/build.gradle ] && sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
-          [ -f android/app/build.gradle.kts ] && sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts || true
+          grep -q '^flutter.minSdkVersion=' android/gradle.properties \
+            && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties \
+            || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
+          [ -f android/app/build.gradle ] && sed -i -E \
+            's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+          [ -f android/app/build.gradle.kts ] && sed -i -E \
+            's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts || true
 
-      - name: Strip app <uses-sdk> (multiline-safe)
+      - name: Strip app <uses-sdk> (multiline-safe) + verify
         run: |
+          set -e
           for f in $(find android/app/src -name AndroidManifest.xml); do
-            awk 'BEGIN{skip=0} /<uses-sdk/ {skip=1} skip&&/\/>/ {skip=0;next} skip{next} {print}' "$f" > /tmp/m && mv /tmp/m "$f"
+            # Törlés akár több soros elem esetén is
+            perl -0777 -pe 's/<uses-sdk[\s\S]*?\/>\s*//g' -i "$f"
           done
+          echo "---- grep after strip (should be empty) ----"
+          grep -R "<uses-sdk" android/app/src || echo "OK: nincs <uses-sdk> az app manifesztekben"
 
       - run: flutter pub get
       - run: flutter build apk --release
@@ -39,4 +47,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: ignore
