@@ -16,7 +16,7 @@ Future<VectorTileLayer> pmtilesLayer(File pmtileFile, vtr.Theme theme) async {
   }
 
   // Helyes provider példányosítás (konstruktor, nem fromFile)
-  final prov = await PmTilesVectorTileProvider.fromFile(
+  final prov = await PmTilesVectorTileProvider.fromSource(
   pmtileFile.path,
   maximumZoom: 14,
 );
