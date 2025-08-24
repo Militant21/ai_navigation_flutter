@@ -27,6 +27,45 @@ jobs:
           cache: true
 
       - name: Ensure Android folder exists (one-time)
+  - name: Force minSdkVersion 30 (safe, no tmp files)
+    run: |
+      set -e
+      echo "== minSdk -> 30 everywhere =="
+
+      # --- Groovy build.gradle ---
+      if [ -f android/app/build.gradle ]; then
+        # létező minSdkVersion N -> 30
+        sed -i -E "s/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/" android/app/build.gradle || true
+        # ha nincs minSdkVersion sor, szúrjuk be a defaultConfig blokkba
+        if ! grep -q "^[[:space:]]*minSdkVersion[[:space:]]" android/app/build.gradle; then
+          sed -i "/^[[:space:]]*defaultConfig[[:space:]]*{/a\
+                \ \ \ \ minSdkVersion 30" android/app/build.gradle
+        fi
+      fi
+
+      # --- Kotlin DSL build.gradle.kts ---
+      if [ -f android/app/build.gradle.kts ]; then
+        sed -i -E "s/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/" android/app/build.gradle.kts || true
+        if ! grep -q "^[[:space:]]*minSdk[[:space:]]*=" android/app/build.gradle.kts; then
+          sed -i "/^[[:space:]]*defaultConfig[[:space:]]*{/a\
+                \ \ \ \ minSdk = 30" android/app/build.gradle.kts
+        fi
+      fi
+
+      # --- Flutter kulcs: gradle.properties ---
+      if [ -f android/gradle.properties ]; then
+        if grep -q "^flutter.minSdkVersion=" android/gradle.properties; then
+          sed -i -E "s/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/" android/gradle.properties
+        else
+          echo "flutter.minSdkVersion=30" >> android/gradle.properties
+        fi
+      else
+        echo "flutter.minSdkVersion=30" > android/gradle.properties
+      fi
+
+      echo "== check =="
+      grep -n "minSdk" android/app/build.gradle* 2>/dev/null || true
+      grep -n "^flutter.minSdkVersion" android/gradle.properties 2>/dev/null || true
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android .
@@ -49,13 +88,11 @@ jobs:
             sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+.*/        minSdkVersion 30/' android/app/build.gradle || true
             # ha nem volt külön sor, a defaultConfig elején is legyen
             grep -q 'minSdkVersion' android/app/build.gradle || \
-              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdkVersion 30";next}1' android/app/build.gradle > t && mv t android/app/build.gradle
           fi
           # Kotlin DSL
           if [ -f android/app/build.gradle.kts ]; then
             sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*.*/        minSdk = 30/' android/app/build.gradle.kts || true
             grep -q 'minSdk[[:space:]]*=' android/app/build.gradle.kts || \
-              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdk = 30";next}1' android/app/build.gradle.kts > t && mv t android/app/build.gradle.kts
           fi
           # gradle.properties (Flutter kulcs)
           if [ -f android/gradle.properties ]; then
