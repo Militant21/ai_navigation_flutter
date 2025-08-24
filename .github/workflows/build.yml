@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,84 +27,47 @@ jobs:
           cache: true
 
       - name: Ensure Android folder exists (one-time)
-  - name: Force minSdkVersion 30 (all places)
-    run: |
-      set -e
-      # --- Groovy (build.gradle) ---
-      if [ -f android/app/build.gradle ]; then
-        sed -i -E "s/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/" android/app/build.gradle || true
-        grep -q "minSdkVersion" android/app/build.gradle || \
-        awk '/defaultConfig[[:space:]]*\{/&&!ins{print;print "        minSdkVersion 30";ins=1;next}1' android/app/build.gradle > t && mv t android/app/build.gradle
-      fi
-
-      # --- Kotlin DSL (build.gradle.kts) ---
-      if [ -f android/app/build.gradle.kts ]; then
-        sed -i -E "s/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/" android/app/build.gradle.kts || true
-        grep -q "minSdk[[:space:]]*=" android/app/build.gradle.kts || \
-        awk '/defaultConfig[[:space:]]*\{/&&!ins{print;print "        minSdk = 30";ins=1;next}1' android/app/build.gradle.kts > t && mv t android/app/build.gradle.kts
-      fi
-
-      # --- gradle.properties (Flutter kulcs) ---
-      if [ -f android/gradle.properties ]; then
-        if grep -q "^flutter\.minSdkVersion=" android/gradle.properties; then
-          sed -i -E "s/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/" android/gradle.properties
-        else
-          echo "flutter.minSdkVersion=30" >> android/gradle.properties
-        fi
-      else
-        echo "flutter.minSdkVersion=30" > android/gradle.properties
-      fi
-
-      echo "== minSdk beállítások után: =="
-      grep -n "minSdk" android/app/build.gradle* 2>/dev/null || true
-      grep -n "flutter.minSdkVersion" android/gradle.properties 2>/dev/null || true
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android .
           fi
 
-      - name: Patch Gradle/AGP for Java 21 + FORCE minSdk 30 everywhere
+      - name: Patch Gradle/AGP + force minSdk 30
+        shell: bash
         run: |
           set -e
-
-          # --- Gradle 8.3 + AGP 8.1.0 (Java 21 kompat) ---
-          sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i -E 's#com\.android\.tools\.build:gradle:[0-9.]+#com.android.tools.build:gradle:8.1.0#' android/build.gradle || true
-
-          # --- minSdk 30 KÉNYSZER MINDENHOL ---
-          # 1) klasszikus Gradle
-          if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/minSdkVersion[[:space:]]*[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
-            sed -i -E 's/minSdk[[:space:]]+[0-9]+/minSdk 30/' android/app/build.gradle || true
-            # ha flutter.minSdkVersion-t használ, az alábbi sor felülírja
-            sed -i -E 's/minSdkVersion[[:space:]]+flutter\.minSdkVersion/minSdkVersion 30/' android/app/build.gradle || true
+          # Gradle 8.3 + AGP 8.1.0 (Java 21-hez jó)
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i -E 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties || true
           fi
 
-          # 2) Kotlin DSL
+          # --- minSdk 30: Groovy build.gradle
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
+            grep -q 'minSdkVersion' android/app/build.gradle || \
+              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdkVersion 30";next}1' android/app/build.gradle > t && mv t android/app/build.gradle
+          fi
+
+          # --- minSdk 30: Kotlin build.gradle.kts
           if [ -f android/app/build.gradle.kts ]; then
             sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
-            sed -i -E 's/minSdk[[:space:]]*\([[:space:]]*[0-9]+[[:space:]]*\)/minSdk(30)/' android/app/build.gradle.kts || true
+            grep -q 'minSdk[[:space:]]*=' android/app/build.gradle.kts || \
+              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdk = 30";next}1' android/app/build.gradle.kts > t && mv t android/app/build.gradle.kts
           fi
 
-          # 3) gradle.properties (Flutter projekteknél sokszor innen jön a minSdk)
+          # --- Flutter kulcs is
           [ -f android/gradle.properties ] || touch android/gradle.properties
-          grep -q '^flutter\.minSdkVersion=' android/gradle.properties && \
-            sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties || \
+          if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
+            sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
+          else
             echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+          fi
 
-          # 4) local.properties (régebbi sablonok ezt veszik figyelembe)
-          [ -f android/local.properties ] || touch android/local.properties
-          grep -q '^flutter\.minSdkVersion=' android/local.properties && \
-            sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/local.properties || \
-            echo 'flutter.minSdkVersion=30' >> android/local.properties
+          echo "== minSdk ellenőrzés =="
+          grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
+          grep -n 'flutter.minSdkVersion' android/gradle.properties || true
 
-          echo "=== Effective minSdk sources ==="
-          grep -n "minSdkVersion" android/app/build.gradle 2>/dev/null || true
-          grep -n "minSdk"        android/app/build.gradle.kts 2>/dev/null || true
-          grep -n "flutter.minSdkVersion" android/gradle.properties || true
-          grep -n "flutter.minSdkVersion" android/local.properties || true
-
-      - name: Flutter pub get
+      - name: flutter pub get
         run: flutter pub get
 
       - name: Build APK (release)
