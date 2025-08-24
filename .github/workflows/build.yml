@@ -67,11 +67,13 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload release APK
+        if: always()
       - name: Upload android folder
         uses: actions/upload-artifact@v4
         with:
           name: android-folder
           path: android
+        if: always()
       - name: Upload android folder
         uses: actions/upload-artifact@v4
         with:
