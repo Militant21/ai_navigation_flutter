@@ -91,7 +91,7 @@ void initState() {
     });
   }
 
-  Future<void> await _initTheme() async {
+  Future<void> _initTheme() async {
   final t = style == 'day' ? await createDayTheme() : await createNightTheme();
   if (!mounted) return;
   setState(() => _theme = t);
