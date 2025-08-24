@@ -32,30 +32,29 @@ jobs:
             flutter create --platforms=android .
           fi
 
-      - name: Patch Gradle/AGP + force minSdk 30
+      - name: Patch Gradle/AGP + force minSdk 30 (safe)
         shell: bash
         run: |
           set -e
-          # Gradle 8.3 + AGP 8.1.0 (Java 21-hez jó)
+
+          # Gradle 8.3 + AGP 8.1.0 (Java 21 kompatibilis)
           if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
             sed -i -E 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties || true
           fi
+          if [ -f android/build.gradle ]; then
+            sed -i -E 's#(com\.android\.tools\.build:gradle:)[0-9.]+#\18.1.0#' android/build.gradle || true
+          fi
 
-          # --- minSdk 30: Groovy build.gradle
+          # --- minSdk 30 (NINCS ideiglenes fájl, nincs mv) ---
+          # Groovy
           if [ -f android/app/build.gradle ]; then
             sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
-            grep -q 'minSdkVersion' android/app/build.gradle || \
-              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdkVersion 30";next}1' android/app/build.gradle > t && mv t android/app/build.gradle
           fi
-
-          # --- minSdk 30: Kotlin build.gradle.kts
+          # Kotlin DSL
           if [ -f android/app/build.gradle.kts ]; then
             sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
-            grep -q 'minSdk[[:space:]]*=' android/app/build.gradle.kts || \
-              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdk = 30";next}1' android/app/build.gradle.kts > t && mv t android/app/build.gradle.kts
           fi
-
-          # --- Flutter kulcs is
+          # Flutter kulcs – ezt minden esetben beállítjuk, ez elég a pluginhoz
           [ -f android/gradle.properties ] || touch android/gradle.properties
           if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
             sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
@@ -63,7 +62,7 @@ jobs:
             echo 'flutter.minSdkVersion=30' >> android/gradle.properties
           fi
 
-          echo "== minSdk ellenőrzés =="
+          echo "== minSdk check =="
           grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
           grep -n 'flutter.minSdkVersion' android/gradle.properties || true
 
