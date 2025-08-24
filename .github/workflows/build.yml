@@ -19,9 +19,12 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.3"
+          flutter-version: "stable"
           channel: stable
           cache: true
+
+      - name: Flutter version
+        run: flutter --version
 
       # Biztonság kedvéért újra kényszerítjük a minSdk=30-at
       - name: Force minSdkVersion 30 (safety)
