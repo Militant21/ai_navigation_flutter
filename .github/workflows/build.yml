@@ -1,133 +1,32 @@
-name: ci-build
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+name: Flutter APK CI
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.22.3', channel: stable, cache: true}
 
-      - name: Set up Java (Temurin 21)
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
+      - run: flutter create --platforms=android .
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.3'
-          channel: stable
-          cache: true
-
-      # Ha nincs android/ a repóban, a CI-ben létrehozzuk
-      - name: Ensure Android folder exists
-        run: flutter create --platforms=android .
-
-      # Gradle 8.3 + AGP 8.1.0 (Java 21 kompat)
-      - name: Patch Gradle wrapper to 8.3 + AGP 8.1.0
-        shell: bash
+      - name: Patch Gradle & AGP
         run: |
-          set -e
-          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
-            sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-          fi
-          for f in android/build.gradle android/build.gradle.kts; do
-            [ -f "$f" ] || continue
-            # AGP 8.1.0
-            sed -i -E 's|(com\.android\.(?:application|library):gradle:)[0-9.]+|\1 8.1.0|g' "$f"
-            # Kotlin DSL-ben lehet version = "x.y.z" forma is
-            sed -i -E 's|(id\("com\.android\.(?:application|library)"\)\s*version\s*=\s*")[0-9.]+|\1 8.1.0|g' "$f"
-          done
+          sed -i -E 's|distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
+          sed -i -E 's|minSdkVersion.*|minSdkVersion 28|' android/app/build.gradle || true
+          echo 'flutter.minSdkVersion=28' >> android/gradle.properties
 
-      # minSdk=28 mindenhol + JVM target 17 ahol kell
-      - name: Force minSdk=28 (Groovy/KTS + gradle.properties)
-        shell: bash
-        run: |
-          set -e
-          # Groovy app/build.gradle
-          if [ -f android/app/build.gradle ]; then
-            grep -q 'minSdkVersion' android/app/build.gradle || sed -i 's/defaultConfig {/defaultConfig {\n        minSdkVersion 28/' android/app/build.gradle
-            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 28/g' android/app/build.gradle
-            # JVM 17 (kotlinOptions)
-            grep -q 'kotlinOptions' android/app/build.gradle || sed -i '/android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = "17"\n    }' android/app/build.gradle
-            sed -i -E 's/(jvmTarget[[:space:]]*=[[:space:]]*")[0-9]+/\117/g' android/app/build.gradle
-          fi
-          # Kotlin DSL app/build.gradle.kts
-          if [ -f android/app/build.gradle.kts ]; then
-            grep -q 'minSdk' android/app/build.gradle.kts || sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        minSdk = 28/' android/app/build.gradle.kts
-            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 28/g' android/app/build.gradle.kts
-            # JVM 17 (kotlinOptions)
-            grep -q 'kotlinOptions' android/app/build.gradle.kts || sed -i '/android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = "17"\n    }' android/app/build.gradle.kts
-            sed -i -E 's/(jvmTarget[[:space:]]*=[[:space:]]*")[0-9]+/\117/g' android/app/build.gradle.kts
-          fi
-          # Flutter override a gradle.properties-ben
-          if [ -f android/gradle.properties ]; then
-            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
-              sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=28/' android/gradle.properties
-            else
-              echo 'flutter.minSdkVersion=28' >> android/gradle.properties
-            fi
-          else
-            echo 'flutter.minSdkVersion=28' > android/gradle.properties
-          fi
+      - run: flutter pub get
+      - run: flutter build apk --release
 
-      # Plugin manifesztből <uses-sdk> törlése a build-könyvtárban
-      - name: Strip <uses-sdk> from plugin manifests (build dir)
-        shell: bash
-        run: |
-          set -e
-          if [ -d build ]; then
-            find build -type f -name AndroidManifest.xml -print0 | xargs -0 -I{} sed -i -E '/<uses-sdk.*>/d' "{}"
-          fi
-
-      - name: flutter pub get
-        run: flutter pub get
-
-      - name: Build APK (release)
-        run: flutter build apk --release
-
-      # Mindig töltsük fel az android/ mappát is (artifact)
-      - name: Upload android folder (always)
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-folder
-          path: android
+        with: {name: android-folder, path: android}
 
-      # APK artifact (ha készült)
-      - name: Upload release APK (if exists)
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: ignore
-
-      # Opcionális: commit back android/ a repóba (csak ha van token)
-      - name: Commit android folder back to repo (optional)
-        if: ${{ env.COMMIT_ANDROID_TO_REPO == 'true' }}
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        shell: bash
-        run: |
-          set -e
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "No GH_TOKEN secret configured; skip commit."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git checkout main
-          git add android
-          if git diff --cached --quiet; then
-            echo "No changes in android/ to commit."
-          else
-            git commit -m "ci: update android/ from CI build"
-            git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
-          fi
+        with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
