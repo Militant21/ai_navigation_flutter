@@ -24,42 +24,47 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Ensure Android folder exists
+        run: flutter create --platforms=android .
+
       - name: flutter pub get
         run: flutter pub get
 
-      - name: Patch Gradle 8.3 + AGP 8.1.0
-        run: |
-          echo "== Gradle wrapper =="
-          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
-            sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-          fi
-
-          echo "== AGP 8.1.0 =="
-          find android -name "build.gradle*" | while read -r f; do
-            sed -i 's/com.android.tools.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.1.0/' "$f"
-          done
-
-      - name: Build APK (release) with minSdk override
+      - name: Force minSdk=30 everywhere
         run: |
           set -e
-          echo "== Checking and fixing minSdk values =="
-          if grep -q "minSdkVersion 21" android/app/build.gradle; then
-            sed -i 's/minSdkVersion 21/minSdkVersion 30/' android/app/build.gradle
-          fi
-          if grep -q "minSdk = 21" android/app/build.gradle.kts; then
-            sed -i 's/minSdk = 21/minSdk = 30/' android/app/build.gradle.kts
-          fi
-          if grep -q "minSdkVersion=21" android/gradle.properties; then
-            sed -i 's/minSdkVersion=21/minSdkVersion=30/' android/gradle.properties
+          echo "== Forcing minSdkVersion = 30 =="
+          # build.gradle (Groovy)
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
+            grep -q 'minSdkVersion' android/app/build.gradle || \
+              sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
           fi
 
-          echo "== Cleaning plugin manifests =="
-          find build -name AndroidManifest.xml | while read -r f; do
-            sed -i -E '/<uses-sdk.*>/d' "$f"
-          done
+          # build.gradle.kts (Kotlin)
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
+            grep -q 'minSdk[[:space:]]*=' android/app/build.gradle.kts || \
+              sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+          fi
 
-          echo "== Starting release build =="
-          flutter build apk --release
+          # gradle.properties (Flutter override)
+          if [ -f android/gradle.properties ]; then
+            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
+              sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
+            else
+              echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+            fi
+          else
+            echo 'flutter.minSdkVersion=30' > android/gradle.properties
+          fi
+
+          echo "== minSdk sources after patch =="
+          grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
+          grep -n '^flutter.minSdkVersion' android/gradle.properties 2>/dev/null || true
+
+      - name: Build APK (release)
+        run: flutter build apk --release
 
       - name: Upload release APK
         uses: actions/upload-artifact@v4
