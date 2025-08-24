@@ -19,21 +19,15 @@ jobs:
           sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
 
-      - name: Set minSdk=28 safely
+      - name: Force minSdk=33
         run: |
-          # 1) állítsuk property-ben (ajánlott Flutter minta)
-          if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
-            sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=28/' android/gradle.properties
+          f=android/gradle.properties
+          [ -f "$f" ] || touch "$f"
+          if grep -q '^flutter.minSdkVersion=' "$f"; then
+            sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' "$f"
           else
-            echo 'flutter.minSdkVersion=28' >> android/gradle.properties
+            echo 'flutter.minSdkVersion=33' >> "$f"
           fi
-          # 2) távolítsuk el a téves minSdkVersion sort a "flutter { }" blokkból, ha odakerült
-          awk 'BEGIN{influtter=0}
-               /^flutter[[:space:]]*\{/ {influtter=1}
-               influtter && /minSdkVersion/ {next}
-               influtter && /\}/ {influtter=0}
-               {print}' android/app/build.gradle > /tmp/app.gradle && mv /tmp/app.gradle android/app/build.gradle
-          # 3) ha a defaultConfig-ban szám áll, cseréljük property-re
           sed -i -E "s/(defaultConfig[[:space:]]*\{[^}]*minSdkVersion)[[:space:]]+[0-9]+/\\1 flutter.minSdkVersion/" android/app/build.gradle || true
 
       - run: flutter pub get
@@ -45,7 +39,4 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         if: always()
-        with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: ignore
+        with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
