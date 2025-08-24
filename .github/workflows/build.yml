@@ -1,5 +1,4 @@
 name: build
-
 on:
   push:
     branches: [ "main" ]
@@ -10,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,55 +26,71 @@ jobs:
           channel: stable
           cache: true
 
-      # 1) android/ létrehozása
+      # android/ létrehozása, ha még nincs
       - name: Ensure Android folder exists
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android .
           fi
 
-      # 2) Gradle 8.3 + AGP 8.1.0 (Java 21 kompat)
-      - name: Bump Gradle 8.3 + AGP 8.1.0 (for Java 21)
+      # Gradle 8.3 + AGP 8.1.0 minden érintett helyen
+      - name: Patch Gradle/AGP for Java 21 (Gradle 8.3, AGP 8.1.0)
         run: |
           set -e
-          # Gradle wrapper -> 8.3
+          # 1) Gradle wrapper -> 8.3
           if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
             sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
-            echo "== wrapper =="
-            grep -n '^distributionUrl=' android/gradle/wrapper/gradle-wrapper.properties || true
           fi
 
-          # AGP -> 8.1.0 (Groovy)
-          if [ -f android/build.gradle ]; then
-            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/' android/build.gradle
-          fi
-          # AGP -> 8.1.0 (KTS) – ha plugins blokkal van megadva, ez általában rendben van AGP8-ra,
-          # de biztos ami biztos, próbáljuk kicserélni a régi coords-ot is, ha előfordul:
-          if [ -f android/build.gradle.kts ]; then
-            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/' android/build.gradle.kts || true
-          fi
+          # 2) AGP -> 8.1.0 (root build.gradle / build.gradle.kts: buildscript classpath)
+          for f in android/build.gradle android/build.gradle.kts; do
+            [ -f "$f" ] || continue
+            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g' "$f"
+          done
 
-      # 3) minSdk=30 mindenhol
-      - name: Force minSdkVersion 30 (Groovy/KTS + gradle.properties)
+          # 3) AGP -> 8.1.0 (plugins DSL variánsok root+app szinten)
+          for f in android/build.gradle android/build.gradle.kts android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$f" ] || continue
+            # Groovy: id 'com.android.application' version 'x'
+            sed -i -E "s/(id[[:space:]]+'com\.android\.application'[[:space:]]+version[[:space:]]+')([0-9.]+)(')/\\1 8.1.0 \\3/g" "$f"
+            # KTS: id("com.android.application") version "x"
+            sed -i -E 's/(id\("com\.android\.application"\)[[:space:]]+version[[:space:]]+")([0-9.]+)("/\1 8.1.0 \3/g' "$f"
+            # Groovy: id 'com.android.library' version 'x'
+            sed -i -E "s/(id[[:space:]]+'com\.android\.library'[[:space:]]+version[[:space:]]+')([0-9.]+)(')/\\1 8.1.0 \\3/g" "$f"
+            # KTS: id("com.android.library") version "x"
+            sed -i -E 's/(id\("com\.android\.library"\)[[:space:]]+version[[:space:]]+")([0-9.]+)("/\1 8.1.0 \3/g' "$f"
+          done
+
+          echo "== Gradle wrapper =="
+          grep -n '^distributionUrl=' android/gradle/wrapper/gradle-wrapper.properties || true
+          echo "== AGP refs =="
+          grep -RniE 'com\.android\.tools\.build:gradle|id\([\"\x27]com\.android\.' android | sed -e 's/^/  /' || true
+
+      # minSdk=30 mindenhol + compileOptions/jvmTarget 17 az app modulban
+      - name: Force minSdk=30 + Java/Kotlin 17 in app
         run: |
           set -e
-          echo "== Force minSdk -> 30 =="
-
-          # Groovy: android/app/build.gradle
+          # Groovy app
           if [ -f android/app/build.gradle ]; then
             sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+.*/        minSdkVersion 30/' android/app/build.gradle || true
-            grep -q 'minSdkVersion' android/app/build.gradle || \
-              sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
+            grep -q 'minSdkVersion' android/app/build.gradle || sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
+
+            # compileOptions
+            grep -q 'compileOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
+            # kotlinOptions
+            grep -q 'kotlinOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
           fi
 
-          # Kotlin DSL: android/app/build.gradle.kts
+          # KTS app
           if [ -f android/app/build.gradle.kts ]; then
             sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*.*/        minSdk = 30/' android/app/build.gradle.kts || true
-            grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts || \
-              sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+            grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts || sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+
+            grep -q 'compileOptions' android/app/build.gradle.kts || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
+            sed -i -E 's/jvmTarget[[:space:]]*=[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle.kts || true
           fi
 
-          # Flutter kulcs: android/gradle.properties
+          # Flutter kulcs (biztos ami biztos)
           if [ -f android/gradle.properties ]; then
             if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
               sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
@@ -87,24 +101,11 @@ jobs:
             echo 'flutter.minSdkVersion=30' > android/gradle.properties
           fi
 
-          echo "== CHECK =="
+          echo "== minSdk sources =="
           grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
           grep -n '^flutter.minSdkVersion' android/gradle.properties 2>/dev/null || true
 
-      # (opcionális) Modul szintű compile target 17 – AGP8 ajánlás
-      - name: (Optional) Set Java/Kotlin compile level 17 for app module
-        run: |
-          set -e
-          if [ -f android/app/build.gradle ]; then
-            grep -q 'compileOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
-            grep -q 'kotlinOptions'  android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
-          fi
-          if [ -f android/app/build.gradle.kts ]; then
-            grep -q 'compileOptions' android/app/build.gradle.kts || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
-            sed -i -E 's/jvmTarget[[:space:]]*=[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle.kts || true
-          fi
-
-      - name: Flutter pub get
+      - name: flutter pub get
         run: flutter pub get
 
       - name: Build APK (release)
@@ -115,8 +116,3 @@ jobs:
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
-# MEGJEGYZÉS:
-# A hiba oka: a Flutter sablon Gradle 7.6.x-et rak, ami Java 21-gyel "Unsupported class file major version 65".
-# Fix: flutter create UTÁN azonnal wrapper=8.3 és AGP=8.1.0 patch, majd minSdk=30 kényszerítés.
-# Nincs ideiglenes fájl, csak sed + ellenőrző grep.
