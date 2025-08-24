@@ -1,0 +1,49 @@
+name: build-android
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.3"
+          channel: stable
+          cache: true
+
+      # Biztonság kedvéért újra kényszerítjük a minSdk=30-at
+      - name: Force minSdkVersion 30 (safety)
+        run: |
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
+          fi
+          grep -q '^flutter.minSdkVersion=30$' android/gradle.properties 2>/dev/null || \
+            echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
