@@ -26,29 +26,30 @@ jobs:
           channel: "stable"
           cache: true
 
-      # >>> EZ LÉTREHOZZA AZ android/ MAPPÁT A CI-BEN <<<
+      # <<< CI-ben generáljuk az android/ platformot >>>
       - name: Generate android platform
         run: flutter create --platforms=android .
 
-      # minSdkVersion -> 24 (app/build.gradle vagy build.gradle.kts, amelyik létezik)
-      - name: Bump minSdkVersion to 24
+      # <<< minSdkVersion -> 30 (kezeli a build.gradle és build.gradle.kts formátumot is) >>>
+      - name: Bump minSdkVersion to 30
         run: |
           if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 24/' android/app/build.gradle
+            sed -i -E 's/minSdkVersion[[:space:]]+flutter\.minSdkVersion/minSdkVersion 30/' android/app/build.gradle || true
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/'                 android/app/build.gradle || true
           fi
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/minSdk(Version)?[[:space:]]*=?[[:space:]]*[0-9]+/minSdk = 24/' android/app/build.gradle.kts
+            # Kotlin DSL-ben gyakori a: defaultConfig { minSdk = 21 }
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/'                 android/app/build.gradle.kts || true
+            # vagy ritkábban: minSdkVersion = 21
+            sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*[0-9]+/minSdkVersion = 30/'   android/app/build.gradle.kts || true
           fi
 
-      # Dependenciák
       - name: Flutter pub get
         run: flutter pub get
 
-      # Release APK build
       - name: Build release APK
         run: flutter build apk --release
 
-      # Artifact feltöltés
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
