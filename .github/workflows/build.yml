@@ -21,6 +21,12 @@ jobs:
           java-version: '21'
 
       - name: Set up Flutter
+    # Ha nincs android/ mappa, egyszer hozza létre.
+    - name: Ensure Android folder exists
+      run: |
+        if [ ! -d android ]; then
+          flutter create --platforms=android .
+        fi
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.3'
