@@ -27,6 +27,8 @@ dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/map/style_dark.json
+    - assets/map/style_light.json
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
