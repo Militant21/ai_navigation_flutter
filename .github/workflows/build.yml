@@ -43,6 +43,14 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Show effective minSdk (debug)
+        run: |
+          echo "--- android/app/build.gradle (first 120 lines) ---"
+          head -n 120 android/app/build.gradle 2>/dev/null || true
+          echo "--- android/app/build.gradle.kts (first 120 lines) ---"
+          head -n 120 android/app/build.gradle.kts 2>/dev/null || true
+          echo "--- android/gradle.properties ---"
+          cat android/gradle.properties 2>/dev/null || true
       - name: Build release APK
         run: flutter build apk --release
 
