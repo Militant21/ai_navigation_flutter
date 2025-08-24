@@ -2,10 +2,14 @@ name: build
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -14,13 +18,21 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.3"
+          flutter-version: '3.22.3'
           channel: stable
+          cache: true
+
+      # Ha nincs android/ mappa, EGYSZER hozza létre.
+      - name: Ensure Android folder exists (one-time)
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android .
+          fi
 
       - name: Force minSdkVersion 30 in gradle files
         run: |
@@ -30,9 +42,10 @@ jobs:
           if [ -f android/app/build.gradle.kts ]; then
             sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
           fi
-          grep -q '^flutter.minSdkVersion=30$' android/gradle.properties 2>/dev/null || echo 'flutter.minSdkVersion=30' >> android/gradle.properties
+          [ -f android/gradle.properties ] || touch android/gradle.properties
+          grep -q '^flutter\.minSdkVersion=30$' android/gradle.properties || echo 'flutter.minSdkVersion=30' >> android/gradle.properties
 
-      - name: Install dependencies
+      - name: Flutter pub get
         run: flutter pub get
 
       - name: Build release APK
@@ -41,5 +54,5 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
+          name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
