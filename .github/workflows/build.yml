@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,81 +26,64 @@ jobs:
           channel: stable
           cache: true
 
-      # 4b) Android SDK komponensek explicit telepítése
-      - name: Install Android SDK components (34 + tools)
-        env:
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-          ANDROID_HOME: /usr/local/lib/android/sdk
-        run: |
-          set -e
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0"
-          # (opcionális kompatibilitás)
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-33" \
-            "build-tools;33.0.2" || true
-          "${ANDROID_HOME}/platform-tools/adb" --version || true
-
-      # android/ létrehozása a runneren (telefonon nincs)
+      # Ha nincs android/ mappa, hozzaadjuk (telefonos környezet miatt is)
       - name: Ensure Android folder exists
         run: |
           if [ ! -d android ]; then
             flutter create --platforms=android .
           fi
 
-      # Gradle 8.3 + AGP 8.1.0 a Java21-hez
-      - name: Patch Gradle/AGP for Java 21 (Gradle 8.3, AGP 8.1.0)
+      - name: flutter pub get
+        run: flutter pub get
+
+      # >>> A TE TERVED SZERINT: PUB GET UTÁN azonnal telepítjük az SDK 34-et
+      - name: Install Android SDK 34 + Build-Tools 34.0.0 (accept licenses)
+        shell: bash
         run: |
           set -e
-          [ -f android/gradle/wrapper/gradle-wrapper.properties ] && \
-          sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' \
-              android/gradle/wrapper/gradle-wrapper.properties || true
+          SDKROOT="${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}"
+          SDKMAN="$SDKROOT/cmdline-tools/latest/bin/sdkmanager"
+          # Biztos ami biztos: legyen sdkmanager
+          if [ ! -x "$SDKMAN" ]; then
+            sudo mkdir -p "$SDKROOT/cmdline-tools"
+            sudo yes | "$SDKROOT/cmdline-tools/bin/sdkmanager" "cmdline-tools;latest" || true
+            SDKMAN="$SDKROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          yes | "$SDKMAN" --licenses
+          yes | "$SDKMAN" --install \
+              "platforms;android-34" \
+              "build-tools;34.0.0" \
+              "platform-tools" \
+              "extras;google;m2repository" \
+              "extras;android;m2repository" \
+              "patcher;v4"
 
-          for f in android/build.gradle android/build.gradle.kts; do
-            [ -f "$f" ] || continue
-            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g' "$f" || true
-          done
-          for f in android/build.gradle android/build.gradle.kts android/app/build.gradle android/app/build.gradle.kts; do
-            [ -f "$f" ] || continue
-            sed -i -E "s/(id[[:space:]]+'com\.android\.application'[[:space:]]+version[[:space:]]*')[0-9.]+(')/\18.1.0\2/g" "$f" || true
-            sed -i -E 's/(id\("com\.android\.application"\)[[:space:]]+version[[:space:]]*")[0-9.]+(")/\18.1.0\2/g' "$f" || true
-            sed -i -E "s/(id[[:space:]]+'com\.android\.library'[[:space:]]+version[[:space:]]*')[0-9.]+(')/\18.1.0\2/g" "$f" || true
-            sed -i -E 's/(id\("com\.android\.library"\)[[:space:]]+version[[:space:]]*")[0-9.]+(")/\18.1.0\2/g' "$f" || true
-          done
+      # Gradle wrapper -> 8.3 (Java 21 kompat)
+      - name: Set Gradle wrapper 8.3
+        run: |
+          set -e
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' \
+              android/gradle/wrapper/gradle-wrapper.properties
+          fi
 
-      # minSdk=30 + Java/Kotlin 17 az app modulban (Groovy & KTS)
-      - name: Force minSdk=30 + Java/Kotlin 17 in app
+      # Biztonsági minSdk=30 + JVM target 17 az appban (Groovy/KTS)
+      - name: Force minSdk=30 + JVM target 17 in app
         run: |
           set -e
           if [ -f android/app/build.gradle ]; then
-            if grep -q '^[[:space:]]*minSdkVersion[[:space:]]' android/app/build.gradle; then
-              sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+[0-9]+/        minSdkVersion 30/' android/app/build.gradle
-            else
-              sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
-            fi
-            grep -q 'compileOptions' android/app/build.gradle || \
-              sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
-            if grep -q 'kotlinOptions' android/app/build.gradle; then
-              sed -i -E 's/jvmTarget[[:space:]]*=?[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle
-            else
-              sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
-            fi
+            sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+.*/        minSdkVersion 30/' android/app/build.gradle || true
+            grep -q 'minSdkVersion' android/app/build.gradle || sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
+            grep -q 'compileOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
+            grep -q 'kotlinOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
           fi
-
           if [ -f android/app/build.gradle.kts ]; then
-            if grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts; then
-              sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*[0-9]+/        minSdk = 30/' android/app/build.gradle.kts
-            else
-              sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
-            fi
-            grep -q 'compileOptions' android/app/build.gradle.kts || \
-              sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
+            sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*.*/        minSdk = 30/' android/app/build.gradle.kts || true
+            grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts || sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+            grep -q 'compileOptions' android/app/build.gradle.kts || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
             sed -i -E 's/jvmTarget[[:space:]]*=[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle.kts || true
           fi
-
+          # Flutter kulcs
           if [ -f android/gradle.properties ]; then
             if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
               sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
@@ -112,15 +94,6 @@ jobs:
             echo 'flutter.minSdkVersion=30' > android/gradle.properties
           fi
 
-          echo "== CHECKS =="
-          grep -n '^distributionUrl=' android/gradle/wrapper/gradle-wrapper.properties || true
-          grep -RniE 'com\.android\.tools\.build:gradle|id\([\"\x27]com\.android\.' android || true
-          grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
-          grep -n '^flutter.minSdkVersion' android/gradle.properties 2>/dev/null || true
-
-      - name: flutter pub get
-        run: flutter pub get
-
       - name: Build APK (release)
         run: flutter build apk --release
 
@@ -129,3 +102,6 @@ jobs:
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # Megjegyzés a fájl végén (próbálkozások): korábban pusztán verziószám-cseréket próbáltunk (Gradle/AGP/minSdk),
+      # ami nem oldotta meg a background_downloader -> minSdk>=24 követelményt. Most *valódi* SDK 34 telepítés történik.
