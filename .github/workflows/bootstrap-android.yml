@@ -25,6 +25,27 @@ jobs:
       # Csak sablont generál – NEM buildel!
       - name: Generate android skeleton
         run: flutter create --platforms=android .
+      - name: Force minSdkVersion = 30
+        run: |
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle
+          fi
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/minSdk(Version)?[[:space:]]*=?[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
+          fi
+          echo "flutter.minSdkVersion=30" >> android/gradle.properties
+
+      - name: Commit android/ into repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android
+          git commit -m "bootstrap(android): set minSdkVersion 30 and add android/ to repo" || echo "Nothing to commit"
+          git push
+
+      - name: Verify minSdk = 30
+        run: |
+          grep -R --line-number -E 'minSdk|flutter.minSdkVersion' android/ || true
 
       # minSdk kényszerítése 30-ra MINDKÉT gradle formátumban + override property
       - name: Force minSdkVersion = 30
