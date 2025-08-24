@@ -1,85 +1,14 @@
-name: build
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java (Temurin 21)
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.22.3'
-          channel: stable
-          cache: true
-
-      - name: Ensure Android folder exists
-        run: flutter create --platforms=android .
-
-      - name: flutter pub get
-        run: flutter pub get
-
-      - name: Force minSdk=30 everywhere
-        run: |
-          set -e
-          echo "== Forcing minSdkVersion = 30 =="
-          # build.gradle (Groovy)
-          if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
-            grep -q 'minSdkVersion' android/app/build.gradle || \
-              sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
-          fi
-
-          # build.gradle.kts (Kotlin)
-          if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
-            grep -q 'minSdk[[:space:]]*=' android/app/build.gradle.kts || \
-              sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
-          fi
-
-          # gradle.properties (Flutter override)
-          if [ -f android/gradle.properties ]; then
-            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
-              sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
-            else
-              echo 'flutter.minSdkVersion=30' >> android/gradle.properties
-            fi
-          else
-            echo 'flutter.minSdkVersion=30' > android/gradle.properties
-          fi
-
-          echo "== minSdk sources after patch =="
-          grep -n 'minSdk' android/app/build.gradle* 2>/dev/null || true
-          grep -n '^flutter.minSdkVersion' android/gradle.properties 2>/dev/null || true
-
-      - name: Build APK (release)
-        run: flutter build apk --release
-
-      - name: Upload release APK
+      - name: Upload android folder (always)
         if: always()
-      - name: Upload android folder
         uses: actions/upload-artifact@v4
         with:
           name: android-folder
           path: android
+
+      - name: Upload release APK (always, ignore if missing)
         if: always()
-      - name: Upload android folder
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-folder
-          path: android
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: ignore
