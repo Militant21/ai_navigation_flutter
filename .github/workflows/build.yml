@@ -26,22 +26,36 @@ jobs:
           channel: "stable"
           cache: true
 
-      # <<< CI-ben generáljuk az android/ platformot >>>
+      # Android platform generálása
       - name: Generate android platform
         run: flutter create --platforms=android .
 
-      # <<< minSdkVersion -> 30 (kezeli a build.gradle és build.gradle.kts formátumot is) >>>
-      - name: Bump minSdkVersion to 30
+      # Átírjuk a generált build.gradle(.kts)-t 30-ra
+      - name: Force minSdkVersion 30 in build.gradle
         run: |
           if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/minSdkVersion[[:space:]]+flutter\.minSdkVersion/minSdkVersion 30/' android/app/build.gradle || true
-            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/'                 android/app/build.gradle || true
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle
           fi
           if [ -f android/app/build.gradle.kts ]; then
-            # Kotlin DSL-ben gyakori a: defaultConfig { minSdk = 30 }
-            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/'                 android/app/build.gradle.kts || true
-            # vagy ritkábban: minSdkVersion = 21
-            sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*[0-9]+/minSdkVersion = 30/'   android/app/build.gradle.kts || true
+            sed -i -E 's/minSdk(Version)?[[:space:]]*=?[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts
+          fi
+
+      # >>> Ellenőrzés: ténylegesen 30 van-e mindenhol
+      - name: Verify minSdkVersion is 30
+        run: |
+          echo "=== android/app/build.gradle ==="
+          if [ -f android/app/build.gradle ]; then
+            grep -nE 'minSdkVersion' android/app/build.gradle || true
+            sed -n '/defaultConfig/,/}/p' android/app/build.gradle || true
+          else
+            echo "(nincs build.gradle)"
+          fi
+          echo "=== android/app/build.gradle.kts ==="
+          if [ -f android/app/build.gradle.kts ]; then
+            grep -nE 'minSdk(Version)?|minSdk[[:space:]]*=' android/app/build.gradle.kts || true
+            sed -n '/defaultConfig/,/}/p' android/app/build.gradle.kts || true
+          else
+            echo "(nincs build.gradle.kts)"
           fi
 
       - name: Flutter pub get
