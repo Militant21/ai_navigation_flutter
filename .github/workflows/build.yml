@@ -13,22 +13,33 @@ jobs:
     - name: Ensure Android folder exists
       run: flutter create --platforms=android .
 
-    # >>> FIX: Gradle 8.3 + AGP 8.1.0 <<<
-    - name: Patch Gradle wrapper + AGP
+    - name: Patch Gradle 8.3 + AGP 8.1.0
       run: |
         sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
         sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
 
-    - name: Strip app <uses-sdk> (safe)
+    - name: Strip app <uses-sdk> (multiline-safe) + verify
       run: |
-        find android/app/src -name AndroidManifest.xml -print -exec sed -i -E '/<uses-sdk[^>]*>/d' {} \;
+        f=android/app/src/main/AndroidManifest.xml
+        [ -f "$f" ] && perl -0777 -pe 's/<uses-sdk\b[^>]*>\s*//g' -i "$f" || true
+        echo "== APP AndroidManifest head =="; sed -n '1,120p' "$f" || true
 
     - name: Force minSdkVersion=33
       run: |
         grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
-        [ -f android/app/build.gradle ] && sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+        [ -f android/app/build.gradle ] && sed -i -E 's/\bminSdkVersion\b[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+        [ -f android/app/build.gradle.kts ] && sed -i -E 's/\bminSdk\b[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts || true
 
     - run: flutter pub get
+
+    - name: Build (Gradle task to produce merged manifest), then inspect
+      run: |
+        cd android
+        ./gradlew -q :app:processReleaseMainManifest
+        echo "== Merged manifest uses-sdk =="
+        grep -n "uses-sdk" app/build/intermediates/merged_manifest/release/AndroidManifest.xml || true
+        cd ..
+
     - run: flutter build apk --release
 
     - uses: actions/upload-artifact@v4
