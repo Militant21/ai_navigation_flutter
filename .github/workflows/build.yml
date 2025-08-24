@@ -1,5 +1,4 @@
 name: build
-
 on:
   push:
     branches: [ "main" ]
@@ -26,25 +25,20 @@ jobs:
           channel: "stable"
           cache: true
 
-      # Android platform generálása
-      - name: Generate android platform
-        run: flutter create --platforms=android .
+      # >>> NINCS flutter create – a repóban levő android/-ot használjuk! <<<
 
-      # <- EZ A LÉNYEG: a Flutter sablon ezt olvassa!
-      - name: Force minSdkVersion 30 via local.properties
-        run: echo "flutter.minSdkVersion=30" >> android/local.properties
-
-      # Fallback: ha a sablon mégis számot írna közvetlenül, írjuk át 30-ra
-      - name: Force minSdkVersion 30 in build files
+      # Biztonsági kényszerítés minSdk 30-ra (mindkét formátum)
+      - name: Force minSdkVersion 30 in gradle files
         run: |
           if [ -f android/app/build.gradle ]; then
             sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle
           fi
           if [ -f android/app/build.gradle.kts ]; then
-            # kétféle minta: minSdk = 21 VAGY minSdkVersion = 21
             sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
             sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*[0-9]+/minSdkVersion = 30/' android/app/build.gradle.kts || true
           fi
+          # plusz a flutter.minSdkVersion a gradle.properties-ben
+          echo "flutter.minSdkVersion=30" >> android/gradle.properties
 
       - name: Flutter pub get
         run: flutter pub get
