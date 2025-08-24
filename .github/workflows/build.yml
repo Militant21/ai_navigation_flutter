@@ -9,17 +9,28 @@ jobs:
       with: {distribution: temurin, java-version: '21'}
     - uses: subosito/flutter-action@v2
       with: {flutter-version: '3.22.3', channel: stable, cache: true}
+
     - name: Ensure Android folder exists
       run: flutter create --platforms=android .
+
+    # >>> FIX: Gradle 8.3 + AGP 8.1.0 <<<
+    - name: Patch Gradle wrapper + AGP
+      run: |
+        sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
+        sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
+
     - name: Strip app <uses-sdk> (safe)
       run: |
         find android/app/src -name AndroidManifest.xml -print -exec sed -i -E '/<uses-sdk[^>]*>/d' {} \;
+
     - name: Force minSdkVersion=33
       run: |
         grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
         [ -f android/app/build.gradle ] && sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+
     - run: flutter pub get
     - run: flutter build apk --release
+
     - uses: actions/upload-artifact@v4
       if: always()
       with: {name: android-folder, path: android}
