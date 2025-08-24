@@ -72,6 +72,11 @@ jobs:
         with:
           name: android-folder
           path: android
+      - name: Upload android folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-folder
+          path: android
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
