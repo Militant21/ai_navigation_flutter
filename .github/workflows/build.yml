@@ -1,31 +1,28 @@
 name: Flutter APK CI
-on: [push, workflow_dispatch]
+on: [push,workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '21'}
-      - uses: subosito/flutter-action@v2
-        with: {flutter-version: '3.22.3', channel: stable, cache: true}
-
-      - name: Strip app <uses-sdk>
-        run: find android/app/src -name AndroidManifest.xml -exec sed -i -E '/<uses-sdk[[:space:]]/d' {} \;
-
-      - name: Force minSdkVersion=33
-        run: |
-          grep -q '^flutter.minSdkVersion=' android/gradle.properties \
-            && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties \
-            || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
-          sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle
-
-      - run: flutter pub get
-      - run: flutter build apk --release
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: {name: android-folder, path: android}
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with: {distribution: temurin, java-version: '21'}
+    - uses: subosito/flutter-action@v2
+      with: {flutter-version: '3.22.3', channel: stable, cache: true}
+    - name: Ensure Android folder exists
+      run: flutter create --platforms=android .
+    - name: Strip app <uses-sdk> (safe)
+      run: |
+        find android/app/src -name AndroidManifest.xml -print -exec sed -i -E '/<uses-sdk[^>]*>/d' {} \;
+    - name: Force minSdkVersion=33
+      run: |
+        grep -q '^flutter.minSdkVersion=' android/gradle.properties && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
+        [ -f android/app/build.gradle ] && sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+    - run: flutter pub get
+    - run: flutter build apk --release
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with: {name: android-folder, path: android}
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
