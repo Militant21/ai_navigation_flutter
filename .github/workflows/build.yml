@@ -24,11 +24,11 @@ jobs:
           channel: stable
           cache: true
 
-      # Android/ mappa a runneren készül, NEM a repo-ban
+      # Ha nincs android/ a repóban, a CI-ben létrehozzuk
       - name: Ensure Android folder exists
         run: flutter create --platforms=android .
 
-      # Gradle 8.3 + AGP 8.1.0 (mind Groovy, mind KTS)
+      # Gradle 8.3 + AGP 8.1.0 (Java 21 kompat)
       - name: Patch Gradle wrapper to 8.3 + AGP 8.1.0
         shell: bash
         run: |
@@ -38,33 +38,96 @@ jobs:
           fi
           for f in android/build.gradle android/build.gradle.kts; do
             [ -f "$f" ] || continue
-            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g' "$f" || true
+            # AGP 8.1.0
+            sed -i -E 's|(com\.android\.(?:application|library):gradle:)[0-9.]+|\1 8.1.0|g' "$f"
+            # Kotlin DSL-ben lehet version = "x.y.z" forma is
+            sed -i -E 's|(id\("com\.android\.(?:application|library)"\)\s*version\s*=\s*")[0-9.]+|\1 8.1.0|g' "$f"
           done
 
-      # minSdk=28 kényszerítése mindenhol
+      # minSdk=28 mindenhol + JVM target 17 ahol kell
       - name: Force minSdk=28 (Groovy/KTS + gradle.properties)
+        shell: bash
         run: |
           set -e
-          echo "== set minSdkVersion to 28 =="
-          # Groovy build.gradle
+          # Groovy app/build.gradle
           if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+[0-9]+/        minSdkVersion 28/' android/app/build.gradle || true
-            if ! grep -q 'minSdkVersion[[:space:]]*28' android/app/build.gradle; then
-              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdkVersion 28";next}1' android/app/build.gradle > /tmp/_app.gradle && mv /tmp/_app.gradle android/app/build.gradle
-            fi
+            grep -q 'minSdkVersion' android/app/build.gradle || sed -i 's/defaultConfig {/defaultConfig {\n        minSdkVersion 28/' android/app/build.gradle
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 28/g' android/app/build.gradle
+            # JVM 17 (kotlinOptions)
+            grep -q 'kotlinOptions' android/app/build.gradle || sed -i '/android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = "17"\n    }' android/app/build.gradle
+            sed -i -E 's/(jvmTarget[[:space:]]*=[[:space:]]*")[0-9]+/\117/g' android/app/build.gradle
           fi
-          # Kotlin KTS build.gradle.kts
+          # Kotlin DSL app/build.gradle.kts
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*[0-9]+/        minSdk = 28/' android/app/build.gradle.kts || true
-            if ! grep -q 'minSdk[[:space:]]*=[[:space:]]*28' android/app/build.gradle.kts; then
-              awk '/defaultConfig[[:space:]]*\{/{print;print "        minSdk = 28";next}1' android/app/build.gradle.kts > /tmp/_app.kts && mv /tmp/_app.kts android/app/build.gradle.kts
-            fi
+            grep -q 'minSdk' android/app/build.gradle.kts || sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        minSdk = 28/' android/app/build.gradle.kts
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 28/g' android/app/build.gradle.kts
+            # JVM 17 (kotlinOptions)
+            grep -q 'kotlinOptions' android/app/build.gradle.kts || sed -i '/android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = "17"\n    }' android/app/build.gradle.kts
+            sed -i -E 's/(jvmTarget[[:space:]]*=[[:space:]]*")[0-9]+/\117/g' android/app/build.gradle.kts
           fi
-          # Flutter override kulcs (ha van)
+          # Flutter override a gradle.properties-ben
           if [ -f android/gradle.properties ]; then
-            if grep -q ^flutter.minSdkVersion android/gradle.properties; then
+            if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
               sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=28/' android/gradle.properties
             else
               echo 'flutter.minSdkVersion=28' >> android/gradle.properties
             fi
+          else
+            echo 'flutter.minSdkVersion=28' > android/gradle.properties
+          fi
+
+      # Plugin manifesztből <uses-sdk> törlése a build-könyvtárban
+      - name: Strip <uses-sdk> from plugin manifests (build dir)
+        shell: bash
+        run: |
+          set -e
+          if [ -d build ]; then
+            find build -type f -name AndroidManifest.xml -print0 | xargs -0 -I{} sed -i -E '/<uses-sdk.*>/d' "{}"
+          fi
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Build APK (release)
+        run: flutter build apk --release
+
+      # Mindig töltsük fel az android/ mappát is (artifact)
+      - name: Upload android folder (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-folder
+          path: android
+
+      # APK artifact (ha készült)
+      - name: Upload release APK (if exists)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: ignore
+
+      # Opcionális: commit back android/ a repóba (csak ha van token)
+      - name: Commit android folder back to repo (optional)
+        if: ${{ env.COMMIT_ANDROID_TO_REPO == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        shell: bash
+        run: |
+          set -e
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "No GH_TOKEN secret configured; skip commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add android
+          if git diff --cached --quiet; then
+            echo "No changes in android/ to commit."
+          else
+            git commit -m "ci: update android/ from CI build"
+            git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git HEAD:main
           fi
