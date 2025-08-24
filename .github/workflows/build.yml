@@ -1,13 +1,12 @@
-name: build
+name: build-android
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,23 +21,19 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.22.3"
-          channel: "stable"
+          channel: stable
           cache: true
 
-      # >>> NINCS flutter create – a repóban levő android/-ot használjuk! <<<
-
-      # Biztonsági kényszerítés minSdk 30-ra (mindkét formátum)
-      - name: Force minSdkVersion 30 in gradle files
+      - name: Force minSdkVersion 30 (safety)
         run: |
           if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle
+            sed -i -E 's/minSdkVersion[[:space:]]+[0-9]+/minSdkVersion 30/' android/app/build.gradle || true
           fi
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 30/' android/app/build.gradle.kts || true
-            sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*[0-9]+/minSdkVersion = 30/' android/app/build.gradle.kts || true
+            sed -i -E "s/minSdk(Version)?[[:space:]]*=?[[:space:]]*[0-9]+/minSdk = 30/" android/app/build.gradle.kts || true
           fi
-          # plusz a flutter.minSdkVersion a gradle.properties-ben
-          echo "flutter.minSdkVersion=30" >> android/gradle.properties
+          grep -q '^flutter\.minSdkVersion=30$' android/gradle.properties 2>/dev/null || \
+            echo 'flutter.minSdkVersion=30' >> android/gradle.properties
 
       - name: Flutter pub get
         run: flutter pub get
