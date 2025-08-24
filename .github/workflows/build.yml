@@ -7,9 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      ANDROID_HOME: /usr/local/lib/android/sdk
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -28,45 +27,7 @@ jobs:
           channel: stable
           cache: true
 
-      # --- SDK INSTALL #1 (Flutter előtt) ---
-      - name: Pre-install Android SDK 34 + Build-Tools 34.0.0 (accept licenses, with retries)
-        shell: bash
-        run: |
-          set -euo pipefail
-          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT}"
-          export ANDROID_HOME="${ANDROID_SDK_ROOT}"
-
-          # cmdline-tools biztosítása
-          /bin/mkdir -p "${ANDROID_SDK_ROOT}/cmdline-tools"
-          if [ ! -x "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" ]; then
-            curl -fsSL -o /tmp/cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
-            /usr/bin/unzip -q -o /tmp/cmdline-tools.zip -d /tmp/cli
-            /bin/rm -rf "${ANDROID_SDK_ROOT}/cmdline-tools/latest"
-            /bin/mv /tmp/cli/cmdline-tools "${ANDROID_SDK_ROOT}/cmdline-tools/latest"
-          fi
-
-          export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-
-          # Licenc + komponensek több próbálkozással
-          for i in 1 2 3; do
-            yes | sdkmanager --licenses && break || sleep 2
-          done
-
-          for i in 1 2 3; do
-            yes | sdkmanager \
-              "platform-tools" \
-              "platforms;android-34" \
-              "build-tools;34.0.0" && break || sleep 2
-          done
-
-          # plusz: adjuk hozzá a PATH-ot a következő lépésekhez is
-          {
-            echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}"
-            echo "ANDROID_HOME=${ANDROID_SDK_ROOT}"
-            echo "PATH=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-          } >> "$GITHUB_ENV"
-
-      # Ha nincs android/ mappa, generáljuk le (runneren van, telefonon nem számít)
+      # Ha nincs android/, generáljuk le (telefonon nincs, a runneren lesz)
       - name: Ensure Android folder exists
         run: |
           if [ ! -d android ]; then
@@ -74,39 +35,58 @@ jobs:
           fi
 
       # Gradle 8.3 + AGP 8.1.0 (Java 21 kompat)
-      - name: Set Gradle wrapper 8.3 and AGP 8.1.0
+      - name: Patch Gradle (8.3) and AGP (8.1.0)
         run: |
           set -e
+          # Gradle wrapper 8.3
           if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
             sed -i -E 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
           fi
+          # AGP 8.1.0 (buildscript classpath)
           for f in android/build.gradle android/build.gradle.kts; do
             [ -f "$f" ] || continue
-            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g' "$f"
+            sed -i -E 's/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g' "$f" || true
           done
+          # Plugins DSL variánsok (root + app, Groovy és KTS)
           for f in android/build.gradle android/build.gradle.kts android/app/build.gradle android/app/build.gradle.kts; do
             [ -f "$f" ] || continue
-            sed -i -E "s/(id[[:space:]]+'com\.android\.application'[[:space:]]+version[[:space:]]+')([0-9.]+)(')/\1 8.1.0 \3/g" "$f" || true
-            sed -i -E 's/(id\("com\.android\.application"\)[[:space:]]+version[[:space:]]+")([0-9.]+)("/\1 8.1.0 \3/g' "$f" || true
-            sed -i -E "s/(id[[:space:]]+'com\.android\.library'[[:space:]]+version[[:space:]]+')([0-9.]+)(')/\1 8.1.0 \3/g" "$f" || true
-            sed -i -E 's/(id\("com\.android\.library"\)[[:space:]]+version[[:space:]]+")([0-9.]+)("/\1 8.1.0 \3/g' "$f" || true
+            sed -i -E "s/(id[[:space:]]+'com\.android\.application'[[:space:]]+version[[:space:]]*')[0-9.]+(')/\18.1.0\2/g" "$f" || true
+            sed -i -E 's/(id\("com\.android\.application"\)[[:space:]]+version[[:space:]]*")[0-9.]+(")/\18.1.0\2/g' "$f" || true
+            sed -i -E "s/(id[[:space:]]+'com\.android\.library'[[:space:]]+version[[:space:]]*')[0-9.]+(')/\18.1.0\2/g" "$f" || true
+            sed -i -E 's/(id\("com\.android\.library"\)[[:space:]]+version[[:space:]]*")[0-9.]+(")/\18.1.0\2/g' "$f" || true
           done
 
-      - name: Force minSdk=30 + JVM target 17 in app
+      # minSdk=30 + JVM 17 a modulban; gradle.properties kulcs is
+      - name: Force minSdk=30 + JVM target 17 (Groovy/KTS + gradle.properties)
         run: |
           set -e
+          # app/build.gradle (Groovy)
           if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+.*/        minSdkVersion 30/' android/app/build.gradle || true
-            grep -q 'minSdkVersion' android/app/build.gradle || sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
-            grep -q 'compileOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
-            grep -q 'kotlinOptions' android/app/build.gradle || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
+            if grep -q '^[[:space:]]*minSdkVersion[[:space:]]' android/app/build.gradle; then
+              sed -i -E 's/^[[:space:]]*minSdkVersion[[:space:]]+[0-9]+/        minSdkVersion 30/' android/app/build.gradle
+            else
+              sed -i "/defaultConfig[[:space:]]*{/a\        minSdkVersion 30" android/app/build.gradle
+            fi
+            grep -q 'compileOptions' android/app/build.gradle || \
+              sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }" android/app/build.gradle
+            if grep -q 'kotlinOptions' android/app/build.gradle; then
+              sed -i -E 's/jvmTarget[[:space:]]*=?[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle
+            else
+              sed -i "/^[[:space:]]*android[[:space:]]*{/a\    kotlinOptions {\n        jvmTarget = \"17\"\n    }" android/app/build.gradle
+            fi
           fi
+          # app/build.gradle.kts (Kotlin DSL)
           if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*.*/        minSdk = 30/' android/app/build.gradle.kts || true
-            grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts || sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
-            grep -q 'compileOptions' android/app/build.gradle.kts || sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
+            if grep -q '^[[:space:]]*minSdk[[:space:]]*=' android/app/build.gradle.kts; then
+              sed -i -E 's/^[[:space:]]*minSdk[[:space:]]*=[[:space:]]*[0-9]+/        minSdk = 30/' android/app/build.gradle.kts
+            else
+              sed -i "/defaultConfig[[:space:]]*{/a\        minSdk = 30" android/app/build.gradle.kts
+            fi
+            grep -q 'compileOptions' android/app/build.gradle.kts || \
+              sed -i "/^[[:space:]]*android[[:space:]]*{/a\    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }" android/app/build.gradle.kts
             sed -i -E 's/jvmTarget[[:space:]]*=[[:space:]]*"?[0-9]+"?/jvmTarget = "17"/' android/app/build.gradle.kts || true
           fi
+          # gradle.properties (Flutter kulcs)
           if [ -f android/gradle.properties ]; then
             if grep -q '^flutter.minSdkVersion=' android/gradle.properties; then
               sed -i -E 's/^flutter\.minSdkVersion=.*/flutter.minSdkVersion=30/' android/gradle.properties
@@ -117,32 +97,32 @@ jobs:
             echo 'flutter.minSdkVersion=30' > android/gradle.properties
           fi
 
+      # Minden manifestből kinyírjuk a <uses-sdk …> sorokat, hogy ne írja felül a Gradle minSdk-et
+      - name: Strip <uses-sdk> from manifests (main/debug/profile)
+        run: |
+          set -e
+          for f in \
+            android/app/src/main/AndroidManifest.xml \
+            android/app/src/debug/AndroidManifest.xml \
+            android/app/src/profile/AndroidManifest.xml
+          do
+            [ -f "$f" ] || continue
+            sed -i -E '/<uses-sdk\b.*>/d' "$f"
+          done
+
       - name: flutter pub get
         run: flutter pub get
 
-      # --- SDK INSTALL #2 (pub get után, duplázva, teljes felülírás) ---
-      - name: Post-install Android SDK 34 + Build-Tools 34.0.0 (accept licenses, with retries)
-        shell: bash
+      # Build ELŐTT még egy biztos felülírás (ha bármi visszaírta volna 21-re)
+      - name: Override minSdkVersion to 30 right before build
         run: |
-          set -euo pipefail
-          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT}"
-          export ANDROID_HOME="${ANDROID_SDK_ROOT}"
-          export PATH="${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${PATH}"
-
-          # Második kör: licenc + komponensek (ha az elsőt felülírta bármi)
-          for i in 1 2 3; do
-            yes | sdkmanager --licenses && break || sleep 2
+          set -e
+          sed -i 's/minSdkVersion 21/minSdkVersion 30/g' android/app/build.gradle 2>/dev/null || true
+          sed -i 's/minSdkVersion 21/minSdkVersion 30/g' android/app/build.gradle.kts 2>/dev/null || true
+          sed -i -E 's/^flutter\.minSdkVersion=21/flutter.minSdkVersion=30/' android/gradle.properties 2>/dev/null || true
+          for f in android/app/src/main/AndroidManifest.xml android/app/src/debug/AndroidManifest.xml android/app/src/profile/AndroidManifest.xml; do
+            [ -f "$f" ] && sed -i -E '/<uses-sdk\b.*>/d' "$f" || true
           done
-
-          for i in 1 2 3; do
-            yes | sdkmanager \
-              --install \
-              "platform-tools" \
-              "platforms;android-34" \
-              "build-tools;34.0.0" && break || sleep 2
-          done
-
-          sdkmanager --list || true
 
       - name: Build APK (release)
         run: flutter build apk --release
@@ -152,3 +132,6 @@ jobs:
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # MEGJEGYZÉS: korábban SDK telepítgetéssel próbálkoztunk; a hiba oka valójában a manifestben maradt minSdk=21 volt.
+      # Most: Gradle/AGP patch, minSdk=30 mindenhol, manifestből <uses-sdk> törölve, build előtt még egy override.
