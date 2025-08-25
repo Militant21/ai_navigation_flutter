@@ -3,14 +3,14 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-Future<vtr.Theme> createDayTheme() async {
+Future<vtr.vtr.Theme> createDayTheme() async {
   final raw = await rootBundle.loadString('assets/map/style_light.json');
   final data = jsonDecode(raw);
-  return vtr.ThemeReader().read(data);
+  return vtr.vtr.ThemeReader().read(data);
 }
 
-Future<vtr.Theme> createNightTheme() async {
+Future<vtr.vtr.Theme> createNightTheme() async {
   final raw = await rootBundle.loadString('assets/map/style_dark.json');
   final data = jsonDecode(raw);
-  return vtr.ThemeReader().read(data);
+  return vtr.vtr.ThemeReader().read(data);
 }
