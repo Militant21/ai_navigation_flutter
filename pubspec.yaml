@@ -9,7 +9,7 @@ environment:
 
 dependencies:
   flutter:
-    sdk: ">=3.5.0 <4.0.0"
+  sdk: flutter
 
   # Térkép stack – Flutter beta (Dart 3.6) barát kombináció
   flutter_map: ^7.0.2
