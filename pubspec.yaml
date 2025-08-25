@@ -9,10 +9,10 @@ environment:
 
 dependencies:
   flutter:
-    sdk: flutter
+    sdk: ">=3.5.0 <4.0.0"
 
   # Térkép stack – Flutter beta (Dart 3.6) barát kombináció
-  flutter_map: ^8.0.0
+  flutter_map: ^7.0.2
   vector_map_tiles: ^8.0.0
   vector_tile_renderer: ^5.2.0
 
@@ -28,5 +28,5 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
-    sdk: flutter
+    sdk: ">=3.5.0 <4.0.0"
   flutter_lints: 3.0.1
