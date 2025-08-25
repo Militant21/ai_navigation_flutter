@@ -1,5 +1,4 @@
 name: Generate pubspec.lock
-
 on:
   push:
     paths:
@@ -16,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - uses: actions/setup-java@v4
         with:
@@ -28,32 +27,28 @@ jobs:
           channel: stable
           cache: true
 
-      # ne induljon pub a mappa létrehozásakor
       - name: Ensure Android folder (safe)
         run: '[ -d android ] || flutter create --platforms=android . --no-pub'
 
-      # <<< LÉNYEG: GIT tisztítás pub előtt >>>
       - name: Git cleanup for pub git deps (strong)
-        shell: bash
         run: |
-          set -e
           git config --global --unset-all "http.https://github.com/.extraheader" || true
-          git config --global --unset-all "http.https://github.com/.insteadof" || true
-          git config --global --unset-all credential.helper || true
-          export GIT_ASKPASS=echo
-          export SSH_ASKPASS=echo
+          git config --global --unset-all "http.https://github.com/.insteadOf" || true
 
       - name: flutter pub get (generate lockfile)
         run: flutter pub get
 
       - name: Commit & push pubspec.lock
         if: ${{ hashFiles('pubspec.lock') != '' }}
-        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
           set -e
-          if [ -f pubspec.lock ]; then
-            git add pubspec.lock
-            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -m "ci(lock): update pubspec.lock"
-            git push
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+          git add pubspec.lock
+          git diff --cached --quiet || git commit -m "ci(lock): update pubspec.lock"
+          git push origin "HEAD:${BRANCH}"
