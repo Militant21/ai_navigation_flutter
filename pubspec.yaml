@@ -1,17 +1,25 @@
 name: ai_navigation_flutter
+description: AI Navigation app
 publish_to: 'none'
-description: Offline truck-first navigation (EU+UK)
-version: 0.1.0+1
-
-
-flutter_icons:
-  android: true
-  ios: true
-  image_path: assets/icon-1024.png
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
-  flutter_localizations:
+  flutter:
     sdk: flutter
+  flutter_map: 6.1.0
+  vector_map_tiles: 7.0.0
+  vector_tile_renderer: 7.0.0
+  sqflite: 2.3.3
+  shared_preferences: 2.2.2
+  path_provider: 2.1.2
+  background_downloader: 7.5.0
+  flutter_tts: 4.0.2
+  easy_localization: 3.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 3.0.1
