@@ -30,7 +30,6 @@ jobs:
           git config --global url."https://".insteadOf git://
           unset GIT_ASKPASS || true
           export GIT_TERMINAL_PROMPT=0
-        with:
           persist-credentials: false
       - uses: actions/setup-java@v4
         with:
