@@ -1,8 +1,9 @@
 name: Flutter APK CI
+
 on:
   push:
     paths-ignore:
-      - "**.md"
+      - "**/*.md"
       - ".github/workflows/lock.yml"
   workflow_dispatch:
 
@@ -21,11 +22,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Git cleanup for pub git deps
+      # GIT CLEANUP ELŐRE HOZVA
+      - name: Git cleanup for pub git deps (early)
+        shell: bash
         run: |
+          set -e
           git config --global --unset-all http.https://github.com/.extraheader || true
-          git config --global url."https://github.com/".insteadOf git@github.com:
-          git config --global url."https://".insteadOf git://
+          git config --global url."https://github.com/".insteadOf git@github.com: || true
+          git config --global url."https://".insteadOf git:// || true
           git config --global credential.helper ":"
           export GIT_TERMINAL_PROMPT=0
 
@@ -39,23 +43,30 @@ jobs:
           channel: beta
           cache: true
 
-      - name: Ensure Android folder (safe)
+      - name: Ensure Android folder
         run: '[ -d android ] || flutter create --platforms=android .'
 
+      # (opcionális) AGP/Gradle patch – nálad már be volt lőve, meghagyom
       - name: Patch Gradle 8.11.1 + AGP 8.7.2
+        shell: bash
         run: |
-          sed -i -E 's|(distributionUrl=).*|\1https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip|' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i -E 's/com.android.tools.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.7.2/' android/build.gradle
+          set -e
+          sed -i -E 's|^(\s*distributionUrl=).*|\1https\://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i -E 's|(com\.android\.tools\.build:gradle:)[0-9.]+|\18.7.2|' android/build.gradle
 
       - name: Force SDKs (compile/target/min = 34)
+        shell: bash
         run: |
+          set -e
           echo 'flutter.compileSdkVersion=34' >> android/gradle.properties
-          echo 'flutter.targetSdkVersion=34' >> android/gradle.properties
-          echo 'flutter.minSdkVersion=24' >> android/gradle.properties
+          echo 'flutter.targetSdkVersion=34'  >> android/gradle.properties
+          echo 'flutter.minSdkVersion=34'     >> android/gradle.properties
 
       - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
+        shell: bash
         run: |
-          find android/app/src -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[^>]*>//g' {} +
+          set -e
+          find android/app/src -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' {} \;
 
       - name: flutter pub get
         run: flutter pub get
