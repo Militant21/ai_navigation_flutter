@@ -6,11 +6,11 @@ import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 Future<Theme> createDayTheme() async {
   final raw = await rootBundle.loadString('assets/map/style_light.json');
   final data = jsonDecode(raw);
-  return ThemeReader().read(data);
+  return vtr.ThemeReader().read(data);
 }
 
 Future<Theme> createNightTheme() async {
   final raw = await rootBundle.loadString('assets/map/style_dark.json');
   final data = jsonDecode(raw);
-  return ThemeReader().read(data);
+  return vtr.ThemeReader().read(data);
 }
