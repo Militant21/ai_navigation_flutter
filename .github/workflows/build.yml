@@ -1,11 +1,9 @@
 name: Flutter APK CI
+on: [push, workflow_dispatch]
 
-on:
-  push:
-    paths-ignore:
-      - "**/*.md"
-      - ".github/workflows/lock.yml"
-  workflow_dispatch:
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -15,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
       - uses: actions/setup-java@v4
         with:
@@ -26,33 +22,58 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.22.3'
           cache: true
 
+      # android/ létrehozás, ha nincs
       - name: Ensure Android folder
-        run: '[ -d android ] || flutter create --platforms=android . --no-pub'
+        run: |
+          [ -d android ] || flutter create --platforms=android .
 
-      # <<< LÉNYEG: GIT tisztítás pub előtt >>>
-      - name: Git cleanup for pub git deps (strong)
-        shell: bash
+      # Gradle/AGP patchelés (Java21 kompatibilis)
+      - name: Patch Gradle/AGP
         run: |
           set -e
-          git config --global --unset-all "http.https://github.com/.extraheader" || true
-          git config --global --unset-all "http.https://github.com/.insteadof" || true
-          git config --global --unset-all credential.helper || true
-          export GIT_ASKPASS=echo
-          export SSH_ASKPASS=echo
+          sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|' android/build.gradle || true
 
-      - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
-        shell: bash
+      # SDK és minSdk fixek
+      - name: Force SDKs (compile/target/min)
+        run: |
+          {
+            echo 'flutter.compileSdkVersion=34'
+            echo 'flutter.targetSdkVersion=34'
+            echo 'flutter.minSdkVersion=33'
+          } >> android/gradle.properties
+          sed -i -E 's/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/' android/app/build.gradle || true
+          sed -i -E 's/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/' android/app/build.gradle || true
+          sed -i -E 's/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+
+      # Manifest: engedélyek + foreground service + reboot receiver + <uses-sdk> törlés
+      - name: Patch AndroidManifest for background
         run: |
           set -e
-          find android/app/src -name AndroidManifest.xml -exec \
-          sed -i -e ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' '{}' \;
+          M=android/app/src/main/AndroidManifest.xml
+          # 1) <uses-sdk ...> TÖRLÉS (ha bármi plugin beírná)
+          sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' "$M"
+          # 2) uses-permission-ek (ha nincs, szúrjuk be az <application> elé)
+          perl -0777 -pe 's#</application>#</application>#' "$M" >/dev/null 2>&1 || true
+          # beszúrás header részbe (ha nem lenne)
+          grep -q 'ACCESS_FINE_LOCATION' "$M" || \
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.WAKE_LOCK"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>\n    <application#' "$M"
+
+          # 3) service + receiver az <application> blokkban
+          # service
+          grep -q 'com.pravera.flutter_foreground_task.service.ForegroundService' "$M" || \
+          sed -i 's#</application>#    <service android:name="com.pravera.flutter_foreground_task.service.ForegroundService"\n             android:exported="false"\n             android:stopWithTask="false"/>\n\n    <receiver android:name="com.pravera.flutter_foreground_task.receiver.RebootBroadcastReceiver"\n              android:enabled="true"\n              android:exported="false">\n        <intent-filter>\n            <action android:name="android.intent.action.BOOT_COMPLETED"/>\n        </intent-filter>\n    </receiver>\n</application>#' "$M"
+
+          echo "== Manifest patched =="
+          grep -n 'FOREGROUND_SERVICE' "$M" || true
 
       - name: flutter pub get
         run: flutter pub get
 
-      - name: Build release APK
+      - name: Build APK (release)
         run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
