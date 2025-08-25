@@ -1,4 +1,5 @@
 name: Generate pubspec.lock
+
 on:
   push:
     paths:
@@ -17,18 +18,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # GIT CLEANUP – a legelső pub műveletek ELŐTT
-      - name: Git cleanup for pub git deps (early)
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config --global --unset-all http.https://github.com/.extraheader || true
-          git config --global --unset-all url."https://github.com/".insteadof || true
-          git config --global --unset-all url."https://".insteadof || true
-          git config --global --unset-all credential.helper || true
-          rm -f ~/.git-credentials ~/.config/git/credentials || true
-          export GIT_TERMINAL_PROMPT=0
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -39,20 +28,32 @@ jobs:
           channel: beta
           cache: true
 
+      # ne induljon pub a mappa létrehozásakor
       - name: Ensure Android folder (safe)
         run: '[ -d android ] || flutter create --platforms=android . --no-pub'
+
+      # <<< LÉNYEG: GIT tisztítás pub előtt >>>
+      - name: Git cleanup for pub git deps (strong)
+        shell: bash
+        run: |
+          set -e
+          git config --global --unset-all "http.https://github.com/.extraheader" || true
+          git config --global --unset-all "http.https://github.com/.insteadof" || true
+          git config --global --unset-all credential.helper || true
+          export GIT_ASKPASS=echo
+          export SSH_ASKPASS=echo
 
       - name: flutter pub get (generate lockfile)
         run: flutter pub get
 
       - name: Commit & push pubspec.lock
+        if: ${{ hashFiles('pubspec.lock') != '' }}
         shell: bash
         run: |
           set -e
-          if ! git diff --quiet -- pubspec.lock; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -f pubspec.lock ]; then
             git add pubspec.lock
-            git commit -m "ci(lock): update pubspec.lock [skip ci]"
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "ci(lock): update pubspec.lock"
             git push
           fi
