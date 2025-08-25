@@ -14,7 +14,7 @@ dependencies:
   # Térkép stack – Flutter beta (Dart 3.6) barát kombináció
   flutter_map: ^8.0.0
   vector_map_tiles: ^8.0.0
-  vector_tile_renderer: ^6.0.0
+  vector_tile_renderer: ^5.2.0
 
   # PMTiles – használj publikus HTTPS git URL-t, nem kell .git végződés
 
