@@ -1,26 +1,10 @@
-# Flutter & Dart
-.dart_tool/
-.packages
-.pub-cache/
 build/
+.dart_tool/
+.android/
 ios/Pods/
 android/.gradle/
-android/app/build/
-*.iml
-.idea/
+android/app/release/
+android/app/profile/
 .vscode/
-
-# Nagy binárék – ezeket NEM visszük gitbe
-*.pmtiles
-*.mbtiles
-*.sqlite
-*.tar
-*.pbf
-assets/data/*.pmtiles
-assets/data/*.sqlite
-regions/
-downloads/
-
-# OS szemét
-.DS_Store
-Thumbs.db
+.idea/
+*.iml
