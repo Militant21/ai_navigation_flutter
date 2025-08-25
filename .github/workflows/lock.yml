@@ -1,13 +1,5 @@
-name: Generate pubspec.lock
-on:
-  push:
-    paths:
-      - 'pubspec.yaml'
-      - '.github/workflows/lock.yml'
-  workflow_dispatch:
-
-permissions:
-  contents: write
+name: Flutter pub lock CI
+on: [workflow_dispatch]
 
 jobs:
   lock:
@@ -15,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
 
       - uses: actions/setup-java@v4
         with:
@@ -24,31 +16,19 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          channel: beta
+          flutter-version: '3.22.3'
           cache: true
 
-      - name: Ensure Android folder (safe)
-        run: '[ -d android ] || flutter create --platforms=android . --no-pub'
-
-      - name: Git cleanup for pub git deps (strong)
+      - name: Generate pubspec.lock
         run: |
-          git config --global --unset-all "http.https://github.com/.extraheader" || true
-          git config --global --unset-all "http.https://github.com/.insteadOf" || true
+          flutter clean
+          flutter pub get
 
-      - name: flutter pub get (generate lockfile)
-        run: flutter pub get
-
-      - name: Commit & push pubspec.lock
-        if: ${{ hashFiles('pubspec.lock') != '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ github.ref_name }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
-          git add pubspec.lock
-          git diff --cached --quiet || git commit -m "ci(lock): update pubspec.lock"
-          git push origin "HEAD:${BRANCH}"
+      - name: Upload pubspec.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: pubspec-lock
+          path: pubspec.lock
+          if-no-files-found: error
+          retention-days: 30
