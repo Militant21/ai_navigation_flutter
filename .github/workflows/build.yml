@@ -32,7 +32,7 @@ jobs:
           cache: true
 
       - name: Ensure Android folder
-        run: '[ -d android ] || flutter create --platforms=android .'
+        run: '[ -d android ] || flutter create --no-pub --platforms=android .'
 
       - name: Patch Gradle 8.11.1 + AGP 8.7.2
         shell: bash

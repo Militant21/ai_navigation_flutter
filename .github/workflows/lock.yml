@@ -28,7 +28,7 @@ jobs:
           cache: true
 
       - name: Ensure Android folder (safe)
-        run: '[ -d android ] || flutter create --platforms=android .'
+        run: '[ -d android ] || flutter create --no-pub --platforms=android .'
 
       - name: flutter pub get (generate lockfile)
         run: flutter pub get
