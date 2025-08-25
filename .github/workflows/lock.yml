@@ -28,7 +28,17 @@ jobs:
           cache: true
 
       - name: Ensure Android folder (safe)
-        run: '[ -d android ] || flutter create --no-pub --platforms=android .'
+        run: '[ -d android ] || flutter create --platforms=android .'
+
+      - name: Git cleanup for pub git deps
+        shell: bash
+        run: |
+          git config --global --unset-all http.https://github.com/.extraheader || true
+          git config --global credential.helper "" || true
+          git config --global --unset-all url."https://github.com/".insteadof || true
+          git config --global --unset-all url."https://".insteadof || true
+          unset GIT_ASKPASS
+          export GIT_TERMINAL_PROMPT=0
 
       - name: flutter pub get (generate lockfile)
         run: flutter pub get
