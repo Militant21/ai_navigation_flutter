@@ -34,19 +34,18 @@ jobs:
       - name: Ensure Android folder
         run: '[ -d android ] || flutter create --platforms=android .'
 
-      # (opcionális) AGP/Gradle patch – ha nálad kellett:
       - name: Patch Gradle 8.11.1 + AGP 8.7.2
         shell: bash
         run: |
           set -e
-          sed -i -E 's|(^\s*distributionUrl=).*|\1https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
-          sed -i -E 's|(com\.android\.tools\.build:gradle:)[0-9\.]+|\18.7.2|' android/build.gradle || true
+          sed -i 's@^\s*distributionUrl=.*@distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip@' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i 's@com\.android\.tools\.build:gradle:[0-9.]\+@com.android.tools.build:gradle:8.7.2@' android/build.gradle || true
 
       - name: Force SDKs (compile/target/min = 34)
         shell: bash
         run: |
           set -e
-          echo 'flutter.compileSdkVersion=34'  >> android/gradle.properties
+          echo 'flutter.compileSdkVersion=34' >> android/gradle.properties
           echo 'flutter.targetSdkVersion=34'  >> android/gradle.properties
           echo 'flutter.minSdkVersion=34'     >> android/gradle.properties
 
