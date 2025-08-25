@@ -1,10 +1,19 @@
+# Flutter/Dart build output
 build/
 .dart_tool/
-.android/
-ios/Pods/
-android/.gradle/
-android/app/release/
-android/app/profile/
-.vscode/
+.packages
+
+# IDE fájlok
 .idea/
+.vscode/
 *.iml
+
+# Platform build mappák
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/Runner.xcworkspace/
+
+# Egyéb cachek
+pubspec.lock.json
+*.log
