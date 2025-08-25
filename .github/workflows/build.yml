@@ -1,50 +1,31 @@
 name: Flutter APK CI
 on:
-  workflow_dispatch:
-  # Általános push-oknál is fusson, de a pubspec.yaml módosítást hagyjuk a lock workflow-ra
   push:
-    branches: [ "main" ]
     paths-ignore:
-      - "pubspec.yaml"
-  # Függjön a Lockfile Sync (beta) sikeres lefutásától
-  workflow_run:
-    workflows: [ "Lockfile Sync (beta)" ]
-    types: [ completed ]
+      - "**.md"
+      - ".github/workflows/lock.yml"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    # Ha workflow_run indította, csak siker esetén menjen
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve ref (use lock workflow head when applicable)
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "REF=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
-          else
-            echo "REF=${{ github.sha }}" >> $GITHUB_ENV
-          fi
-
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.REF }}
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
-      # Flutter BETA (Dart 3.6) – v9/v8 tiles stackhez
       - uses: subosito/flutter-action@v2
         with:
-          channel: beta
           channel: beta
           cache: true
 
@@ -75,16 +56,10 @@ jobs:
       - name: flutter pub get
         run: flutter pub get
 
-      - name: Generate launcher icons (optional)
-        run: |
-          grep -q '^flutter_launcher_icons:' pubspec.yaml && \
-            flutter pub run flutter_launcher_icons:main || true
-
       - name: Build release APK
         run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
         with:
-          channel: beta
           name: apk-release
           path: build/app/outputs/flutter-apk/*.apk
