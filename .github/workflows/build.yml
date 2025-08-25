@@ -1,6 +1,10 @@
 name: Flutter APK CI
-on: [push, workflow_dispatch]
-
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - "pubspec.lock"
+  workflow_dispatch:
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
