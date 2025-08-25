@@ -17,3 +17,6 @@ ios/Runner.xcworkspace/
 # Egyéb cachek
 pubspec.lock.json
 *.log
+
+# Ignore backup files
+*.bak
