@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 class TruckProfile {
   double height; // m
   double width;  // m

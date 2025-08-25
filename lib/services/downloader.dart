@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'dart:convert'; // <-- kell a jsonDecode/jsonEncode-hoz
 import 'dart:io';
 import 'package:background_downloader/background_downloader.dart';
