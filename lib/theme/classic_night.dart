@@ -1,7 +1,7 @@
 import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-/// Éjszakai (classic) téma – Protomaps dark + apró módosítások
+/// Éjszakai (classic) téma – Protobase dark + apró módosítások
 vtr.Theme classicNightTheme() {
   final base = vmt.ProtomapsThemes.dark();
   return base.copyWith(

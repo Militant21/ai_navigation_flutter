@@ -1,7 +1,7 @@
 import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-/// Nappali (classic) téma – Protomaps light + apró módosítások
+/// Nappali (classic) téma – Protobase light + apró módosítások
 vtr.Theme classicDayTheme() {
   final base = vmt.ProtomapsThemes.light();
   return base.copyWith(
