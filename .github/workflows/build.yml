@@ -8,69 +8,29 @@ jobs:
     - uses: actions/setup-java@v4
       with: {distribution: temurin, java-version: '21'}
     - uses: subosito/flutter-action@v2
-      with: {flutter-version: '3.22.3', channel: stable, cache: true}
-
-    - name: Ensure Android folder exists
-      run: flutter create --platforms=android .
-
-    - name: Patch Gradle 8.3 + AGP 8.1.0
+      with: {channel: stable, cache: true}
+    - name: Ensure Android folder
+      run: '[ -d android ] || flutter create --platforms=android .'
+    - name: Patch Gradle 8.11.1 + AGP 8.7.2
       run: |
-        sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.3-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
-        sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.1.0|g' android/build.gradle || true
-
-    - name: Strip <uses-sdk> from APP manifest (multiline-safe) and show it
+        sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
+        sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|' android/build.gradle || true
+    - name: Force SDKs (compile/target/min = 34)
       run: |
-        f=android/app/src/main/AndroidManifest.xml
-        if [ -f "$f" ]; then
-          perl -0777 -pe 's/<uses-sdk\b[^>]*>\s*//g' -i "$f"
-          nl -ba "$f" | sed -n '1,160p'
-          echo "---- grep uses-sdk (should be empty) ----"
-          grep -n "<uses-sdk" "$f" || echo "OK: no <uses-sdk> in APP manifest"
-        else
-          echo "MISSING: $f"; exit 1
-        fi
-
-    - name: Force minSdkVersion=33 in Gradle (app + property)
+        {
+          echo 'flutter.compileSdkVersion=34'
+          echo 'flutter.targetSdkVersion=34'
+          echo 'flutter.minSdkVersion=34'
+        } >> android/gradle.properties
+        sed -i -E "s/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/" android/app/build.gradle || true
+        sed -i -E "s/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/"   android/app/build.gradle || true
+        sed -i -E "s/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/"            android/app/build.gradle || true
+    - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
       run: |
-        # gradle.properties (Flutter mintához)
-        grep -q '^flutter.minSdkVersion=' android/gradle.properties \
-          && sed -i 's/^flutter.minSdkVersion=.*/flutter.minSdkVersion=33/' android/gradle.properties \
-          || echo 'flutter.minSdkVersion=33' >> android/gradle.properties
-        # app/build.gradle (Groovy): szám -> property
-        if [ -f android/app/build.gradle ]; then
-          sed -i -E 's/\bminSdkVersion\b[[:space:]]+[0-9]+/minSdkVersion 33/' android/app/build.gradle
-          sed -i -E 's/\bminSdk\b[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle
-          echo "---- app/build.gradle minSdk lines ----"
-          nl -ba android/app/build.gradle | grep -nE 'minSdk|minSdkVersion' || true
-        fi
-        # app/build.gradle.kts (Kotlin DSL): minSdk = 33
-        if [ -f android/app/build.gradle.kts ]; then
-          sed -i -E 's/\bminSdk\b[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 33/' android/app/build.gradle.kts
-          echo "---- app/build.gradle.kts minSdk lines ----"
-          nl -ba android/app/build.gradle.kts | grep -nE 'minSdk' || true
-        fi
-
-    - run: flutter pub get
-
-    - name: Show resolved Gradle properties (minSdkVersion) BEFORE merge
-      run: |
-        cd android
-        ./gradlew -q :app:properties | sed -n '1,180p' | grep -i 'minSdk'
-        cd ..
-
-    - name: Produce merged manifest only (for inspection)
-      run: |
-        cd android
-        ./gradlew :app:processReleaseMainManifest --stacktrace
-        echo "== Merged manifest uses-sdk =="
-        grep -n "uses-sdk" app/build/intermediates/merged_manifest/release/AndroidManifest.xml || true
-        cd ..
-
-    - run: flutter build apk --release
-
+        find android/app/src -name AndroidManifest.xml -exec sed -i '/<uses-sdk/,/>/d' {} \;
+    - name: flutter pub get
+      run: flutter pub get
+    - name: Build APK (release)
+      run: flutter build apk --release
     - uses: actions/upload-artifact@v4
-      if: always()
-      with: {name: android-folder, path: android}
-    - uses: actions/upload-artifact@v4
-      if: always()
-      with: {name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk, if-no-files-found: ignore}
+      with: {name: apk-release, path: build/app/outputs/flutter-apk/*.apk}
