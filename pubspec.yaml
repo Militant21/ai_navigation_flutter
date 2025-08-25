@@ -3,3 +3,6 @@ flutter_icons:
   android: true
   ios: true
   image_path: assets/icon-1024.png
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
