@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
         with:
           persist-credentials: false
 
@@ -43,6 +45,15 @@ jobs:
         run: '[ -d android ] || flutter create --platforms=android .'
 
       - name: flutter pub get (generate lockfile)
+  - name: Git cleanup for pub git deps
+    run: |
+      git config --global --unset-all http.https://github.com/.extraheader || true
+      git config --global --unset-all url."https://github.com/".insteadof || true
+      git config --global --unset-all url."https://".insteadof || true
+      git config --global --unset-all credential.helper || true
+      rm -f ~/.git-credentials ~/.config/git/credentials || true
+      unset GIT_ASKPASS
+      export GIT_TERMINAL_PROMPT=0
         run: flutter pub get
 
       - name: Commit & push pubspec.lock
