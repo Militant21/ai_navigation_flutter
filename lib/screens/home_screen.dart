@@ -16,7 +16,7 @@ import '../models/route_models.dart';
 import '../models/truck.dart';
 // Map témák (vector_tile_renderer alapú Theme)
 import '../theme/map_themes.dart';
-import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr as vtr;
+import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 // Widgetek
 import '../widgets/waypoint_list.dart';
 import '../widgets/profile_picker.dart';

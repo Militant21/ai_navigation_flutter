@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 /// Előkészítés: értesítési csatorna + alap beállítás
