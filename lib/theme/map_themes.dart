@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:vector_tile_renderer/vector_tile_renderer.dart';
+import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
 Future<Theme> createDayTheme() async {
   final raw = await rootBundle.loadString('assets/map/style_light.json');
