@@ -45,7 +45,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: beta
-          flutter-version: '3.25.0-0.2.pre'
+          channel: beta
           cache: true
 
       - name: Ensure Android folder
@@ -85,5 +85,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
+          channel: beta
           name: apk-release
           path: build/app/outputs/flutter-apk/*.apk
