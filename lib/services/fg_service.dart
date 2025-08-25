@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 /// Előkészítés: értesítési csatorna + alap beállítás
@@ -8,7 +9,7 @@ Future<void> initForegroundTask() async {
   if (Platform.isAndroid) {
     await FlutterForegroundTask.requestNotificationPermission();
   }
-  await FlutterForegroundTask.init(
+  FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
       channelId: 'ai_nav_channel',
       channelName: 'AI Navigation',
@@ -73,5 +74,8 @@ class _NavTaskHandler extends TaskHandler {
   }
 
   @override
+@override
+Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
+
   Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {}
 }
