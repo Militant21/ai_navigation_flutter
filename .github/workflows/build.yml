@@ -1,10 +1,11 @@
 name: Flutter APK CI
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
     paths-ignore:
       - "pubspec.lock"
   workflow_dispatch:
+
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
@@ -26,7 +27,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: '3.22.3'
+          flutter-version: '3.24.3'
           cache: true
 
       - name: Ensure Android folder
@@ -35,28 +36,46 @@ jobs:
 
       - name: Patch Gradle 8.11.1 + AGP 8.7.2
         run: |
-          sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
-          sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|' android/build.gradle || true
+          set -e
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties
+          fi
+          for f in android/build.gradle android/build.gradle.kts; do
+            [ -f "$f" ] || continue
+            sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|g' "$f"
+          done
 
-      - name: Force SDKs (compile/target/min = 34)
+      - name: Force SDKs (compile/target/min)
         run: |
+          set -e
+          # property-k
           {
             echo 'flutter.compileSdkVersion=34'
             echo 'flutter.targetSdkVersion=34'
-            echo 'flutter.minSdkVersion=24'
+            echo 'flutter.minSdkVersion=28'
           } >> android/gradle.properties
-          sed -i -E 's/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/' android/app/build.gradle || true
-          sed -i -E 's/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/' android/app/build.gradle || true
-          sed -i -E 's/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
 
-      - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
+          # app build.gradle (Groovy)
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E 's/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/' android/app/build.gradle || true
+            sed -i -E 's/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/' android/app/build.gradle || true
+            sed -i -E 's/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
+          fi
+
+          # app build.gradle.kts (KTS)
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i -E 's/compileSdk[[:space:]]*=[[:space:]]*[0-9]+/compileSdk = 34/' android/app/build.gradle.kts || true
+            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 28/' android/app/build.gradle.kts || true
+          fi
+
+      - name: Strip ALL <uses-sdk> from manifests
         run: |
-          find android/app/src -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' {} \;
+          find android -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' {} \;
 
       - name: flutter pub get
         run: flutter pub get
 
-      - name: Commit & push pubspec.lock
+      - name: Commit & push pubspec.lock (no rebuild loop)
         run: |
           if ! git diff --quiet -- pubspec.lock; then
             git config user.name "github-actions[bot]"
@@ -66,15 +85,11 @@ jobs:
             git push
           fi
 
-      - name: Generate launcher icons (optional)
-        run: |
-          grep -q '^flutter_launcher_icons:' pubspec.yaml && \
-            flutter pub run flutter_launcher_icons:main || true
-
-      - name: Build APK (release)
+      - name: Build release APK
         run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: apk-release
           path: build/app/outputs/flutter-apk/*.apk

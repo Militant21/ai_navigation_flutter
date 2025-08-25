@@ -7,17 +7,19 @@ environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
+  latlong2: ^0.9.1
+  vector_map_tiles_pmtiles: ^1.5.0
   flutter:
     sdk: flutter
   flutter_map: ^8.2.1
   vector_map_tiles: ^8.0.0
   vector_tile_renderer: ^6.0.0
-  sqflite: 2.3.3
-  shared_preferences: 2.2.2
-  path_provider: 2.1.2
-  background_downloader: 7.5.0
-  flutter_tts: 4.0.2
-  easy_localization: 3.0.5
+  sqflite: ^2.3.3+1
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.4
+  background_downloader: ^9.2.3
+  flutter_tts: ^4.2.3
+  easy_localization: ^3.0.5
 
 dev_dependencies:
   flutter_test:
