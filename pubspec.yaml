@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
   flutter: ">=3.24.0"
 
 dependencies:
@@ -14,7 +14,7 @@ dependencies:
   # Térkép stack – Flutter beta (Dart 3.6) barát kombináció
   flutter_map: ^8.0.0
   vector_map_tiles: ^9.0.0
-  vector_tile_renderer: ^8.0.0
+  vector_tile_renderer: ^8.2.1
 
   # PMTiles – használj publikus HTTPS git URL-t, nem kell .git végződés
 
