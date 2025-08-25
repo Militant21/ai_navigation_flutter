@@ -1,0 +1,41 @@
+name: Generate pubspec.lock
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # kell, hogy vissza tudjon pusholni
+
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.22.3'
+          cache: true
+
+      - name: Ensure Android folder (safe)
+        run: '[ -d android ] || flutter create --platforms=android .'
+
+      - name: flutter pub get (generate lockfile)
+        run: flutter pub get
+
+      - name: Commit & push pubspec.lock
+        run: |
+          if [ -f pubspec.lock ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add pubspec.lock
+            git commit -m "ci(lock): update pubspec.lock [skip ci]" || echo "no changes"
+            git push
+          fi
