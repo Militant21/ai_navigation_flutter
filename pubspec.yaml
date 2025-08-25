@@ -34,3 +34,5 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: 3.0.1
+vector_map_tiles_pmtiles:
+  path: packages/vector_map_tiles_pmtiles
