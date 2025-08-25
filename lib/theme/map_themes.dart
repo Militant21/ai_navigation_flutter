@@ -43,3 +43,5 @@ vtr.Theme classicNightTheme() {
 
 Future<vtr.Theme> createDayTheme() async => classicDayTheme();
 Future<vtr.Theme> createNightTheme() async => classicNightTheme();
+Future<vtr.Theme> createDayTheme() async => classicDayTheme();
+Future<vtr.Theme> createNightTheme() async => classicNightTheme();
