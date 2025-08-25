@@ -4,32 +4,24 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"         # Dart 3.6 (β)
-  flutter: ">=3.26.0-0"         # Flutter 3.26 beta vonal
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.24.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # --- FLEAFLET β STACK (git ref-ekkel) ---
-  flutter_map:
+  # Térkép stack – Flutter beta (Dart 3.6) barát kombináció
+  flutter_map: ^8.0.0
+  vector_map_tiles: ^9.0.0
+  vector_tile_renderer: ^8.2.1
+
+  # PMTiles – használj publikus HTTPS git URL-t, nem kell .git végződés
+  vector_map_tiles_pmtiles:
     git:
-      url: https://github.com/fleaflet/flutter_map.git
-      ref: v8.2.0-beta.2
-  vector_map_tiles:
-    git:
-      url: https://github.com/fleaflet/vector_map_tiles.git
-      ref: v9.0.0-beta.2
-  vector_tile_renderer:
-    git:
-      url: https://github.com/fleaflet/vector_tile_renderer.git
-      ref: v8.0.0-beta.2
-  vector_map_tiles_pmtile:
-    git:
-      url: https://github.com/fleaflet/vector_map_tiles_pmtile.git
+      url: https://github.com/fleaflet/vector_map_tiles_pmtiles
       ref: v2.1.0-beta.1
 
-  # --- a többi marad, ahogy használtad ---
   latlong2: ^0.9.1
   sqflite: ^2.3.3+1
   shared_preferences: ^2.3.2
