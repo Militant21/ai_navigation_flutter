@@ -1,6 +1,4 @@
-# (== ide kerül a fenti lock.yml teljes tartalma ==)
 name: Generate pubspec.lock
-
 on:
   push:
     paths:
@@ -19,28 +17,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Git cleanup for pub git deps (strong)
-        run: |
-          git config --global --unset-all http.https://github.com/.extraheader || true
-          git config --global --unset-all http.https://github.com/.extraHeader || true
-          git config --global --unset credential.helper || true
-          git config --global credential.helper ":"
-          rm -f ~/.git-credentials || true
-          git config --global url."https://github.com/".insteadOf git@github.com:
-          git config --global url."https://".insteadOf git://
-          unset GIT_ASKPASS || true
-          export GIT_TERMINAL_PROMPT=0
-          persist-credentials: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
       - uses: subosito/flutter-action@v2
         with:
           channel: beta
           cache: true
+
       - name: Ensure Android folder (safe)
         run: '[ -d android ] || flutter create --platforms=android .'
+
       - name: Git cleanup for pub git deps
         run: |
           git config --global --unset-all http.https://github.com/.extraheader || true
@@ -48,8 +37,10 @@ jobs:
           git config --global url."https://".insteadOf git://
           git config --global credential.helper ":"
           export GIT_TERMINAL_PROMPT=0
+
       - name: flutter pub get (generate lockfile)
         run: flutter pub get
+
       - name: Commit & push pubspec.lock
         run: |
           if ! git diff --quiet -- pubspec.lock; then
