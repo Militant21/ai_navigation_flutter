@@ -17,10 +17,6 @@ dependencies:
   vector_tile_renderer: ^8.2.1
 
   # PMTiles – használj publikus HTTPS git URL-t, nem kell .git végződés
-  vector_map_tiles_pmtiles:
-    git:
-      url: https://github.com/<helyes_org>/<helyes_repo>
-      ref: v2.1.0-beta.1
 
   latlong2: ^0.9.1
   sqflite: ^2.3.3+1
