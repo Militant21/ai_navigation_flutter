@@ -1,4 +1,5 @@
 name: Flutter APK CI
+
 on:
   push:
     paths-ignore:
@@ -9,10 +10,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,18 +17,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      # GIT CLEANUP – bármi pub ELŐTT
-      - name: Git cleanup for pub git deps (early)
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config --global --unset-all http.https://github.com/.extraheader || true
-          git config --global --unset-all url."https://github.com/".insteadof || true
-          git config --global --unset-all url."https://".insteadof || true
-          git config --global --unset-all credential.helper || true
-          rm -f ~/.git-credentials ~/.config/git/credentials || true
-          export GIT_TERMINAL_PROMPT=0
 
       - uses: actions/setup-java@v4
         with:
@@ -46,12 +31,23 @@ jobs:
       - name: Ensure Android folder
         run: '[ -d android ] || flutter create --platforms=android . --no-pub'
 
-      # (opcionális) manifest tisztítás – maradhat
+      # <<< LÉNYEG: GIT tisztítás pub előtt >>>
+      - name: Git cleanup for pub git deps (strong)
+        shell: bash
+        run: |
+          set -e
+          git config --global --unset-all "http.https://github.com/.extraheader" || true
+          git config --global --unset-all "http.https://github.com/.insteadof" || true
+          git config --global --unset-all credential.helper || true
+          export GIT_ASKPASS=echo
+          export SSH_ASKPASS=echo
+
       - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
         shell: bash
         run: |
           set -e
-          find android/app/src -name AndroidManifest.xml -exec sed -i -e ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' '{}' \;
+          find android/app/src -name AndroidManifest.xml -exec \
+          sed -i -e ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' '{}' \;
 
       - name: flutter pub get
         run: flutter pub get
