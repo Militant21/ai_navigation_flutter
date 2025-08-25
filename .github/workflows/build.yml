@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,6 +20,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      # GIT CLEANUP – bármi pub ELŐTT
+      - name: Git cleanup for pub git deps (early)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --unset-all http.https://github.com/.extraheader || true
+          git config --global --unset-all url."https://github.com/".insteadof || true
+          git config --global --unset-all url."https://".insteadof || true
+          git config --global --unset-all credential.helper || true
+          rm -f ~/.git-credentials ~/.config/git/credentials || true
+          export GIT_TERMINAL_PROMPT=0
 
       - uses: actions/setup-java@v4
         with:
@@ -28,39 +44,14 @@ jobs:
           cache: true
 
       - name: Ensure Android folder
-        run: '[ -d android ] || flutter create --platforms=android .'
+        run: '[ -d android ] || flutter create --platforms=android . --no-pub'
 
-      # (opcionális) AGP/Gradle patch – nálad bevált verziók
-      - name: Patch Gradle 8.11.1 + AGP 8.7.2
-        shell: bash
-        run: |
-          set -e
-          sed -i -E 's|(distributionUrl=).*|\1https://services.gradle.org/distributions/gradle-8.11.1-bin.zip|' android/gradle/wrapper/gradle-wrapper.properties
-          sed -i -E 's|(com.android.tools.build:gradle:)[0-9.]+|\18.7.2|' android/build.gradle
-
-      - name: Force SDKs (compile/target/min = 34)
-        shell: bash
-        run: |
-          set -e
-          echo 'flutter.compileSdkVersion=34' >> android/gradle.properties
-          echo 'flutter.targetSdkVersion=34'  >> android/gradle.properties
-          echo 'flutter.minSdkVersion=34'     >> android/gradle.properties
-
-      # (opcionális) uses-sdk sorok eltávolítása a manifestekből
+      # (opcionális) manifest tisztítás – maradhat
       - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
         shell: bash
         run: |
-          find android/app/src -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s|<uses-sdk[\s\S]*?>||g' '{}' \;
-
-      - name: Git cleanup for pub git deps
-        shell: bash
-        run: |
-          git config --global --unset-all http.https://github.com/.extraheader || true
-          git config --global credential.helper "" || true
-          git config --global --unset-all url."https://github.com/".insteadof || true
-          git config --global --unset-all url."https://".insteadof || true
-          unset GIT_ASKPASS
-          export GIT_TERMINAL_PROMPT=0
+          set -e
+          find android/app/src -name AndroidManifest.xml -exec sed -i -e ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' '{}' \;
 
       - name: flutter pub get
         run: flutter pub get
