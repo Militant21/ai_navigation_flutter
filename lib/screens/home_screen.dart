@@ -21,6 +21,7 @@ import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 import '../widgets/waypoint_list.dart';
 import '../widgets/profile_picker.dart';
 import '../widgets/poi_toggles.dart';
+import '../widgets/no_map_fallback.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

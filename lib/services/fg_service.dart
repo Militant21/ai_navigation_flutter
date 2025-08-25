@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:isolate';
+import 'dart:isolate';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 /// Előkészítés: értesítési csatorna + alap beállítás
@@ -74,6 +75,9 @@ class _NavTaskHandler extends TaskHandler {
   }
 
   @override
+@override
+Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
+
 @override
 Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
 
