@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@v4
         with:
@@ -54,6 +56,13 @@ jobs:
           find android/app/src -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' {} \;
 
       - name: flutter pub get
+    - name: Git cleanup for pub git deps
+      run: |
+        git config --global --unset-all http.https://github.com/.extraheader || true
+        git config --global url."https://github.com/".insteadOf git@github.com:
+        git config --global url."https://".insteadOf git://
+        git config --global credential.helper ":"
+        export GIT_TERMINAL_PROMPT=0
         run: flutter pub get
 
       - name: Build release APK
