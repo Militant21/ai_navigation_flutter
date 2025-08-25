@@ -4,10 +4,11 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 /// Előkészítés: értesítési csatorna + alap beállítás
 Future<void> initForegroundTask() async {
-  // Android 13+ POST_NOTIFICATIONS runtime engedélye
+  // Android 13+ POST_NOTIFICATIONS runtime engedély
   if (Platform.isAndroid) {
     await FlutterForegroundTask.requestNotificationPermission();
   }
+
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
       channelId: 'ai_nav_channel',
@@ -39,7 +40,7 @@ Future<void> initForegroundTask() async {
 Future<void> startForegroundService() async {
   await FlutterForegroundTask.startService(
     notificationTitle: 'AI Navigation',
-    notificationText: 'Running in background…',
+    notificationText: 'Running in background..',
     callback: startCallback, // kötelező callback
   );
 }
@@ -73,8 +74,10 @@ class _NavTaskHandler extends TaskHandler {
   }
 
   @override
-@override
-Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
+  Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
 
-@override
+  @override
+  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
+    // Itt cleanup, ha kell (pl. erőforrás felszabadítás)
+  }
 }
