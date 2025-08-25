@@ -1,1 +1,61 @@
-[...ide került a parancsblokkal írt build.yml...]
+name: Flutter APK CI
+
+on:
+  push:
+    paths-ignore:
+      - "**/*.md"
+      - ".github/workflows/lock.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Ensure Android folder
+        run: '[ -d android ] || flutter create --platforms=android . --no-pub'
+
+      # <<< LÉNYEG: GIT tisztítás pub előtt >>>
+      - name: Git cleanup for pub git deps (strong)
+        shell: bash
+        run: |
+          set -e
+          git config --global --unset-all "http.https://github.com/.extraheader" || true
+          git config --global --unset-all "http.https://github.com/.insteadof" || true
+          git config --global --unset-all credential.helper || true
+          export GIT_ASKPASS=echo
+          export SSH_ASKPASS=echo
+
+      - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
+        shell: bash
+        run: |
+          set -e
+          find android/app/src -name AndroidManifest.xml -exec \
+          sed -i -e ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' '{}' \;
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-release
+          path: build/app/outputs/flutter-apk/*.apk
