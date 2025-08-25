@@ -71,6 +71,8 @@ jobs:
           grep -n 'FOREGROUND_SERVICE' "$M" || true
 
       - name: flutter pub get
+      - name: Flutter tests
+        run: flutter test --no-pub
         run: flutter pub get
 
       - name: Build APK (release)
