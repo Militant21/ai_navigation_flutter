@@ -1,17 +1,12 @@
 name: Flutter APK CI
-on:
-  push:
-    branches: [ "main" ]
-    paths-ignore:
-      - "pubspec.lock"
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -24,72 +19,57 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # Flutter BETA (Dart 3.6), fixált béta build a stabil reprodukcióért
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
-          flutter-version: '3.24.3'
+          channel: beta
+          flutter-version: '3.25.0-0.2.pre'
           cache: true
 
-      - name: Ensure Android folder
+      # Ha hiányzik az android/, generáljuk
+      - name: Ensure Android folder (safe)
         run: |
           [ -d android ] || flutter create --platforms=android .
 
+      # Gradle/AGP páros, ami jól működik ezzel a Flutterrel
       - name: Patch Gradle 8.11.1 + AGP 8.7.2
         run: |
-          set -e
-          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
-            sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties
-          fi
-          for f in android/build.gradle android/build.gradle.kts; do
-            [ -f "$f" ] || continue
-            sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|g' "$f"
-          done
+          sed -i -E 's|^distributionUrl=.*|distributionUrl=https://services.gradle.org/distributions/gradle-8.11.1-all.zip|' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i -E 's|com\.android\.tools\.build:gradle:[0-9.]+|com.android.tools.build:gradle:8.7.2|' android/build.gradle || true
 
-      - name: Force SDKs (compile/target/min)
+      # SDK-k erőltetése (34)
+      - name: Force SDKs (compile/target/min = 34)
         run: |
-          set -e
-          # property-k
           {
             echo 'flutter.compileSdkVersion=34'
             echo 'flutter.targetSdkVersion=34'
-            echo 'flutter.minSdkVersion=28'
+            echo 'flutter.minSdkVersion=34'
           } >> android/gradle.properties
+          sed -i -E 's/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/' android/app/build.gradle || true
+          sed -i -E 's/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/' android/app/build.gradle || true
+          sed -i -E 's/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
 
-          # app build.gradle (Groovy)
-          if [ -f android/app/build.gradle ]; then
-            sed -i -E 's/compileSdkVersion .*/compileSdkVersion flutter.compileSdkVersion/' android/app/build.gradle || true
-            sed -i -E 's/targetSdkVersion .*/targetSdkVersion flutter.targetSdkVersion/' android/app/build.gradle || true
-            sed -i -E 's/minSdkVersion .*/minSdkVersion flutter.minSdkVersion/' android/app/build.gradle || true
-          fi
-
-          # app build.gradle.kts (KTS)
-          if [ -f android/app/build.gradle.kts ]; then
-            sed -i -E 's/compileSdk[[:space:]]*=[[:space:]]*[0-9]+/compileSdk = 34/' android/app/build.gradle.kts || true
-            sed -i -E 's/minSdk[[:space:]]*=[[:space:]]*[0-9]+/minSdk = 28/' android/app/build.gradle.kts || true
-          fi
-
-      - name: Strip ALL <uses-sdk> from manifests
+      # Minden <uses-sdk> kiszedése a manifestekből
+      - name: Strip ALL <uses-sdk> from manifests (multiline-safe)
         run: |
-          find android -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' {} \;
+          find android/app/src -name AndroidManifest.xml -exec sed -i ':a;N;$!ba;s/<uses-sdk[\s\S]*?>//g' {} \;
 
+      # Dependenciák letöltése
       - name: flutter pub get
         run: flutter pub get
 
-      - name: Commit & push pubspec.lock (no rebuild loop)
+      # (Opcionális) launcher ikonok, ha be van állítva
+      - name: Generate launcher icons (optional)
         run: |
-          if ! git diff --quiet -- pubspec.lock; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add pubspec.lock
-            git commit -m "ci: update pubspec.lock [skip ci]"
-            git push
-          fi
+          grep -q '^flutter_launcher_icons:' pubspec.yaml && \
+            flutter pub run flutter_launcher_icons:main || true
 
+      # APK build
       - name: Build release APK
         run: flutter build apk --release
 
+      # Artefakt feltöltés
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: apk-release
           path: build/app/outputs/flutter-apk/*.apk
