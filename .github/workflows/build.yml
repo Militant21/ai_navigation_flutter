@@ -1,4 +1,5 @@
 name: Flutter APK CI
+
 on:
   push:
     paths-ignore:
@@ -16,10 +17,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -28,30 +31,45 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      # --- Minimal AndroidManifest, HERE-DOC NÉLKÜL ---
       - name: Ensure Android manifest (safe)
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p android/app/src/main
-          if [ ! -f android/app/src/main/AndroidManifest.xml ]; then
-          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-            package="com.example.ai_navigation_flutter">
-            <application/>
-          </manifest>
-EOF
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ ! -f "$MANIFEST" ]; then
+            printf '%s\n' \
+              '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
+              '  <application />' \
+              '</manifest>' > "$MANIFEST"
           fi
 
-      - name: Generate launcher icons
-        run: flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
+      - name: Generate launcher icons (Android only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
+            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
+          else
+            echo "launcher icon config or image missing; skipping"
+          fi
 
-      - name: Generate native splash
-        run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
+      - name: Generate native splash (Android)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f flutter_native_splash.yaml ]; then
+            flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
+          else
+            echo "no splash yaml; skipping"
+          fi
 
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
       - uses: actions/upload-artifact@v4
         with:
