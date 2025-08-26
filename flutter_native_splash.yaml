@@ -1,9 +1,8 @@
 flutter_native_splash:
   android: true
   ios: false
-  color: "#F8F1F6"       # finom világos háttér
-  branding_mode: bottom
+  color: "#F8F6F6"
   image: assets/splash/logo.png
   android_12:
-    color: "#F8F1F6"
+    color: "#F8F6F6"
     image: assets/splash/logo.png

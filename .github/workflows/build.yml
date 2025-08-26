@@ -1,5 +1,4 @@
 name: Flutter APK CI
-
 on:
   push:
     paths-ignore:
@@ -36,30 +35,29 @@ jobs:
         run: |
           set -e
           git config --global --unset-all "http.https://github.com.extraheader" || true
-          git config --global --unset-all "http.https://github.com/.insteadof" || true
+          git config --global --unset-all "http.https://github.com/.insteadOf" || true
 
       - name: Flutter pub get
         run: flutter pub get
-        run: flutter pub get
-      flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
 
-      - name: Force debug signing for release (dev only)
-        run: bash ci/force_debug_release.sh
-
-      - name: Flutter pub get (again)
-        run: flutter pub get
-        run: flutter pub get
-      flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
-
-      - name: Generate launcher icons if asset present
-  run: |
-          if [ -f assets/icon/icon.png ]; then
+      - name: Generate launcher icons (Android only)
+        run: |
+          if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
+            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
           else
-            echo "assets/icon/icon.png not found, skipping launcher icon generation"
+            echo "icon yaml or image missing; skipping"
+          fi
+
+      - name: Generate native splash (Android)
+        run: |
+          if [ -f flutter_native_splash.yaml ]; then
+            flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
+          else
+            echo "no splash yaml; skipping"
           fi
 
       - name: Build DEBUG APK (dev-friendly signing)
-  run: |
+        run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
