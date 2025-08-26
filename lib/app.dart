@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'screens/catalog.dart';
+import 'screens/settings.dart';
 import 'screens/no_map_fallback.dart';
 import 'screens/home_screen.dart'; // a meglévő térképes képernyő
 import 'package:path_provider/path_provider.dart';
@@ -41,8 +43,8 @@ class _AiNavAppState extends State<AiNavApp> {
               : const NoMapFallback(),
       routes: {
         '/home': (ctx) => const HomeScreen(),
-        '/settings': (ctx) => const Scaffold(body: Center(child: Text("Settings"))),
-        '/catalog': (ctx) => const Scaffold(body: Center(child: Text("Catalog"))),
+        '/settings': (ctx) => const SettingsScreen(),
+        '/catalog': (ctx) => const CatalogScreen(),
       },
     );
   }
