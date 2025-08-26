@@ -1,5 +1,4 @@
 name: Flutter APK CI
-
 on:
   push:
     paths-ignore:
@@ -29,32 +28,51 @@ jobs:
           cache: true
 
       - name: Flutter pub get
-
-      # --- ENSURE ANDROID V2 EMBEDDING (safe) ---
-      - name: Ensure Android folder (v2 embedding, safe)
-        run: |
-          # Ha nincs android/ mappa, generáljuk v2-vel:
-          [ -d android/app/src/main ] || flutter create --platforms=android . --no-pub
-          # Meta-data flutterEmbedding=2, ha hiányzik a Manifestből:
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          if [ -f "$MANIFEST" ] && ! grep -q "flutterEmbedding" "$MANIFEST"; then
-            sed -i "s#</application>#  <meta-data android:name=\"flutterEmbedding\" android:value=\"2\" />\n  </application>#" "$MANIFEST"
-          fi
         run: flutter pub get
 
-      # --- Minimal AndroidManifest, HERE-DOC NÉLKÜL ---
-      - name: Ensure Android manifest (safe)
+      - name: Ensure Android v2 embedding (safe)
         shell: bash
         run: |
           set -euo pipefail
+          [ -d android/app/src/main ] || flutter create --platforms=android . --no-pub
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if [ -f "$MANIFEST" ] && ! grep -q 'flutterEmbedding' "$MANIFEST"; then
+            sed -i 's#</application>#  <meta-data android:name="flutterEmbedding" android:value="2" />\
+  </application>#' "$MANIFEST"
+          fi
+
+      - name: Ensure minimal AndroidManifest (fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          MANIFEST=android/app/src/main/AndroidManifest.xml
           mkdir -p android/app/src/main
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
           if [ ! -f "$MANIFEST" ]; then
             printf '%s\n' \
-              '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
-              '  <application />' \
-              '</manifest>' > "$MANIFEST"
+'<?xml version="1.0" encoding="utf-8"?>' \
+'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
+'  <application>' \
+'    <meta-data android:name="flutterEmbedding" android:value="2" />' \
+'  </application>' \
+'</manifest>' > "$MANIFEST"
           fi
+
+      - name: Ensure flutter_native_splash in dev_dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -q 'flutter_native_splash' pubspec.yaml; then
+            awk '
+              BEGIN{in_dev=0; added=0}
+              /^[[:space:]]*dev_dependencies:[[:space:]]*$/ {print; in_dev=1; next}
+              /^[[:alpha:]_]/ && in_dev==1 && added==0 {print "  flutter_native_splash: ^2.4.1"; added=1}
+              {print}
+              END{
+                if(in_dev==1 && added==0) print "  flutter_native_splash: ^2.4.1";
+                if(in_dev==0){print "dev_dependencies:"; print "  flutter_native_splash: ^2.4.1"}
+              }' pubspec.yaml > pubspec.yaml.new && mv pubspec.yaml.new pubspec.yaml
+          fi
+          flutter pub get
 
       - name: Generate launcher icons (Android only)
         shell: bash
@@ -63,7 +81,7 @@ jobs:
           if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
             flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
           else
-            echo "launcher icon config or image missing; skipping"
+            echo "launcher icon config or image missing: skipping"
           fi
 
       - name: Generate native splash (Android)
