@@ -51,17 +51,16 @@ jobs:
         run: flutter pub get
         run: flutter pub get
       flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
-      flutter pub run flutter_native_splash:create
 
       - name: Generate launcher icons if asset present
-        run: |
+  run: |
           if [ -f assets/icon/icon.png ]; then
           else
             echo "assets/icon/icon.png not found, skipping launcher icon generation"
           fi
 
       - name: Build DEBUG APK (dev-friendly signing)
-        run: |
+  run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
