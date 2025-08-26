@@ -30,40 +30,29 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Ensure Android v2 embedding (safe)
+      # Írjunk biztos, minimál manifestet (v2 embedding)
+      - name: Ensure minimal AndroidManifest
         shell: bash
         run: |
           set -euo pipefail
-          [ -d android/app/src/main ] || flutter create --platforms=android . --no-pub
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          if [ -f "$MANIFEST" ] && ! grep -q 'flutterEmbedding' "$MANIFEST"; then
-            sed -i 's#</application>#  <meta-data android:name="flutterEmbedding" android:value="2" />\
-  </application>#' "$MANIFEST"
-          fi
-
-      - name: Ensure minimal AndroidManifest (fallback)
-        shell: bash
-        run: |
-          set -euo pipefail
-          MANIFEST=android/app/src/main/AndroidManifest.xml
           mkdir -p android/app/src/main
-          if [ ! -f "$MANIFEST" ]; then
-            printf '%s\n' \
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          printf '%s\n' \
 '<?xml version="1.0" encoding="utf-8"?>' \
 '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
 '  <application>' \
 '    <meta-data android:name="flutterEmbedding" android:value="2" />' \
 '  </application>' \
 '</manifest>' > "$MANIFEST"
-          fi
 
+      # Ha kell, tegyük be a flutter_native_splash-t dev dep-be
       - name: Ensure flutter_native_splash in dev_dependencies
         shell: bash
         run: |
           set -euo pipefail
           if ! grep -q 'flutter_native_splash' pubspec.yaml; then
             awk '
-              BEGIN{in_dev=0; added=0}
+              BEGIN{in_dev=0;added=0}
               /^[[:space:]]*dev_dependencies:[[:space:]]*$/ {print; in_dev=1; next}
               /^[[:alpha:]_]/ && in_dev==1 && added==0 {print "  flutter_native_splash: ^2.4.1"; added=1}
               {print}
@@ -71,8 +60,8 @@ jobs:
                 if(in_dev==1 && added==0) print "  flutter_native_splash: ^2.4.1";
                 if(in_dev==0){print "dev_dependencies:"; print "  flutter_native_splash: ^2.4.1"}
               }' pubspec.yaml > pubspec.yaml.new && mv pubspec.yaml.new pubspec.yaml
+            flutter pub get
           fi
-          flutter pub get
 
       - name: Generate launcher icons (Android only)
         shell: bash
