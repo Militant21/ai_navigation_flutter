@@ -38,6 +38,8 @@ jobs:
           git config --global --unset-all "http.https://github.com..insteadof" || true
 
       - name: Flutter pub get
+  - name: Force debug signing for release (dev only)
+    run: bash ci/force_debug_release.sh
         run: flutter pub get
 
       - name: Generate launcher icons if asset present
