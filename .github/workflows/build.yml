@@ -1,4 +1,5 @@
 name: Flutter APK CI
+
 on:
   push:
     paths-ignore:
@@ -35,11 +36,15 @@ jobs:
         run: |
           set -e
           git config --global --unset-all "http.https://github.com.extraheader" || true
-          git config --global --unset-all "http.https://github.com..insteadof" || true
+          git config --global --unset-all "http.https://github.com/.insteadof" || true
 
       - name: Flutter pub get
-  - name: Force debug signing for release (dev only)
-    run: bash ci/force_debug_release.sh
+        run: flutter pub get
+
+      - name: Force debug signing for release (dev only)
+        run: bash ci/force_debug_release.sh
+
+      - name: Flutter pub get (again)
         run: flutter pub get
 
       - name: Generate launcher icons if asset present
@@ -53,8 +58,8 @@ jobs:
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
           flutter build apk --debug \
-            --build-number="$GITHUB_RUN_NUMBER" \
-            --build-name="$(date +%Y.%m.%d).$GITHUB_RUN_NUMBER"
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
 
       - uses: actions/upload-artifact@v4
         with:
