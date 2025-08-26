@@ -33,10 +33,10 @@ jobs:
       
     - name: Flutter pub get
       run: flutter pub get
-      - name: Force debug signing for release (dev only)
-        run: bash ci/force_debug_release.sh
-    - name: Generate launcher icons if asset present
-      run: |
+
+    - name: Force debug signing for release (dev only)
+      run: bash ci/force_debug_release.sh
+
         if [ -f assets/icon/icon.png ]; then
           flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
         else
