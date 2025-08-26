@@ -40,6 +40,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      # --- ANDROID ICONS (csak ha van yaml + PNG) ---
       - name: Generate launcher icons (Android only)
         run: |
           if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
@@ -47,6 +48,14 @@ jobs:
           else
             echo "icon yaml or image missing; skipping"
           fi
+
+      # --- SPLASH: CI közben tesszük be a dev dep-et, HA HIÁNYZIK ---
+      - name: Ensure flutter_native_splash dev dependency (CI-only)
+        run: |
+          if ! grep -q '^[[:space:]]*flutter_native_splash:' pubspec.yaml; then
+            dart pub add --dev flutter_native_splash
+          fi
+          flutter pub get
 
       - name: Generate native splash (Android)
         run: |
@@ -56,6 +65,7 @@ jobs:
             echo "no splash yaml; skipping"
           fi
 
+      # --- BUILD DEBUG APK (dev-barát aláírás) ---
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
           flutter build apk --debug \
