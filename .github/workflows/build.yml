@@ -30,6 +30,7 @@ jobs:
         set -e
         git config --global --unset-all "http.https://github.com.extraheader" || true
         git config --global --unset-all "http.https://github.com/.insteadOf" || true
+      - name: Force debug signing for release\n        run: bash ci/force_debug_release.sh
     - name: Flutter pub get
       run: flutter pub get
     - name: Generate launcher icons if asset present
