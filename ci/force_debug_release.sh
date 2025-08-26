@@ -1,22 +1,35 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
 APP=android/app/build.gradle
-[ -f "$APP" ] || exit 0  # ha nincs android mappa, a build.lépés fogja létrehozni és ez a script később fusson
-# Ha már van release szekció, módosítjuk; ha nincs, beszúrjuk.
+# Ha még nincs android mappa (első build hozza létre), lépjünk ki hibátlanul
+[ -f "$APP" ] || exit 0
+
+# Biztos, ami biztos: gradle fájl sorvégeinek normalizálása
+sed -i 's/\r$//' "$APP"
+
+# Ha van buildTypes->release: kényszerítsük debug signingre és kapcsoljuk ki a shrink/minify-t
 if grep -q "buildTypes" "$APP"; then
   sed -i '
     /buildTypes\s*{/,/}/ {
       /release\s*{/,/}/ {
         s/minifyEnabled\s*true/minifyEnabled false/g
         s/shrinkResources\s*true/shrinkResources false/g
-        /signingConfig/! s/release\s*{/&\n            signingConfig signingConfigs.debug/
-        /minifyEnabled/! s/release\s*{/&\n            minifyEnabled false/
-        /shrinkResources/! s/release\s*{/&\n            shrinkResources false/
+        s/signingConfig\s\+signingConfigs\.\w\+/signingConfig signingConfigs.debug/g
       }
     }
   ' "$APP"
 else
-  sed -i '
-    s/android\s*{/android {\n    buildTypes {\n        release {\n            signingConfig signingConfigs.debug\n            minifyEnabled false\n            shrinkResources false\n        }\n    }\n/
-  ' "$APP"
+  # Ha nincs, egészítsük ki egy minimális release blokkal
+  cat >> "$APP" <<'EOF'
+android {
+  buildTypes {
+    release {
+      signingConfig signingConfigs.debug
+      minifyEnabled false
+      shrinkResources false
+    }
+  }
+}
+EOF
 fi
