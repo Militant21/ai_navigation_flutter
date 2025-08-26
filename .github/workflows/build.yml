@@ -1,5 +1,4 @@
 name: Flutter APK CI
-
 on:
   push:
     paths-ignore:
@@ -28,34 +27,43 @@ jobs:
           channel: stable
           cache: true
 
-      # Android v2 embedding: ha nincs android/ mappa, hozzuk létre biztonságból
+      # ---- Gyors cache Gradle-nek
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # ---- Gyors gradle.properties (daemon, cache, párhuzamosítás)
+      - name: Ensure fast Gradle props
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android
+          gp=android/gradle.properties
+          grep -q '^org.gradle.daemon='      "$gp" 2>/dev/null || echo 'org.gradle.daemon=true'            >> "$gp"
+          grep -q '^org.gradle.caching='     "$gp" 2>/dev/null || echo 'org.gradle.caching=true'           >> "$gp"
+          grep -q '^org.gradle.parallel='    "$gp" 2>/dev/null || echo 'org.gradle.parallel=true'          >> "$gp"
+          grep -q '^org.gradle.configureondemand=' "$gp" 2>/dev/null || echo 'org.gradle.configureondemand=true' >> "$gp"
+          grep -q '^kotlin.incremental='     "$gp" 2>/dev/null || echo 'kotlin.incremental=true'           >> "$gp"
+
+      # ---- Android v2 embedding + projekt váz (ha hiányzik)
       - name: Ensure Android folder (safe, v2)
         shell: bash
         run: |
           set -euo pipefail
           if [ ! -d android/app/src/main ]; then
-            flutter create . --platforms=android --no-pub
+            flutter create --platforms=android --no-pub .
           fi
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - name: Flutter pub get (fast)
+        run: flutter pub get --no-example
 
-      # Minimál AndroidManifest.xml CSAK ha hiányzik (ikon generáláshoz kell)
-      - name: Ensure minimal AndroidManifest (only if missing)
-        shell: bash
-        run: |
-          set -euo pipefail
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          mkdir -p android/app/src/main
-          if [ ! -f "$MANIFEST" ]; then
-            printf '%s\n' \
-              '<?xml version="1.0" encoding="utf-8"?>' \
-              '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
-              '  <application />' \
-              '</manifest>' > "$MANIFEST"
-          fi
-
-      # Ikon generálás: csak ha van yaml + ikon kép
+      # ---- Ikon/splash csak ha van yaml és asset (gyors, feltételes)
       - name: Generate launcher icons (Android only)
         shell: bash
         run: |
@@ -63,30 +71,24 @@ jobs:
           if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
             flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
           else
-            echo "launcher icon config or image missing; skipping"
+            echo "skip icons"
           fi
 
-      # Splash: ha van flutter_native_splash.yaml, futtatjuk
       - name: Generate native splash (Android)
         shell: bash
         run: |
           set -euo pipefail
-          if [ -f flutter_native_splash.yaml ]; then
-            flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
+          if [ -f flutter_native_splash.yaml ] || [ -f flutter_native_splash.yml ]; then
+            CFG=$( [ -f flutter_native_splash.yaml ] && echo flutter_native_splash.yaml || echo flutter_native_splash.yml )
+            flutter pub run flutter_native_splash:create --path="$CFG"
           else
-            echo "no splash yaml; skipping"
+            echo "skip splash"
           fi
 
-      # Debug APK build (dev-barát aláírás)
-      - name: Build DEBUG APK (dev-friendly signing)
-        shell: bash
-        run: |
-          set -euo pipefail
-          flutter build apk --debug \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+      # ---- Gyors DEBUG build (icon-tree-shake kikapcs a sebességért)
+      - name: Build DEBUG APK (fast)
+        run: flutter build apk --debug --no-tree-shake-icons
 
-      # Artifakt feltöltés
       - uses: actions/upload-artifact@v4
         with:
           name: apk-debug
