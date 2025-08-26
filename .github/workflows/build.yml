@@ -35,7 +35,7 @@ jobs:
     - name: Generate launcher icons if asset present
       run: |
         if [ -f assets/icon/icon.png ]; then
-          flutter pub run flutter_launcher_icons
+          flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
         else
           echo "assets/icon/icon.png not found, skipping launcher icon generation"
         fi
