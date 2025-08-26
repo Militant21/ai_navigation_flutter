@@ -34,10 +34,10 @@ jobs:
       run: flutter pub get
     - name: Generate launcher icons if asset present
       run: |
-        if [ -f assets/icon.png ]; then
+        if [ -f assets/icon/icon.png ]; then
           flutter pub run flutter_launcher_icons
         else
-          echo "assets/icon.png not found, skipping launcher icon generation"
+          echo "assets/icon/icon.png not found, skipping launcher icon generation"
         fi
     - name: Build release APK (auto version)
       run: |
