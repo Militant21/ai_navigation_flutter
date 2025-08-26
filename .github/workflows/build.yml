@@ -29,6 +29,17 @@ jobs:
           cache: true
 
       - name: Flutter pub get
+
+      # --- ENSURE ANDROID V2 EMBEDDING (safe) ---
+      - name: Ensure Android folder (v2 embedding, safe)
+        run: |
+          # Ha nincs android/ mappa, generáljuk v2-vel:
+          [ -d android/app/src/main ] || flutter create --platforms=android . --no-pub
+          # Meta-data flutterEmbedding=2, ha hiányzik a Manifestből:
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          if [ -f "$MANIFEST" ] && ! grep -q "flutterEmbedding" "$MANIFEST"; then
+            sed -i "s#</application>#  <meta-data android:name=\"flutterEmbedding\" android:value=\"2\" />\n  </application>#" "$MANIFEST"
+          fi
         run: flutter pub get
 
       # --- Minimal AndroidManifest, HERE-DOC NÉLKÜL ---
