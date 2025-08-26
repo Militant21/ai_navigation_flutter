@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -d android/app/src/main ]; then
-            flutter create --platforms=android --no-pub
+            flutter create . --platforms=android --no-pub
           fi
 
       - name: Flutter pub get
