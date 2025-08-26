@@ -28,34 +28,34 @@ jobs:
           channel: stable
           cache: true
 
-      # --- Android v2 embedding: ha nincs android/ mappa, generáljuk le biztonságosan ---
+      # Android v2 embedding: ha nincs android/ mappa, hozzuk létre biztonságból
       - name: Ensure Android folder (safe, v2)
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -d android ]; then
-            flutter create --platforms=android --no-pub .
+          if [ ! -d android/app/src/main ]; then
+            flutter create --platforms=android --no-pub
           fi
 
       - name: Flutter pub get
         run: flutter pub get
 
-      # --- Minimál AndroidManifest.xml, csak ha hiányzik (ikon generáláshoz) ---
+      # Minimál AndroidManifest.xml CSAK ha hiányzik (ikon generáláshoz kell)
       - name: Ensure minimal AndroidManifest (only if missing)
         shell: bash
         run: |
           set -euo pipefail
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          MANIFEST=android/app/src/main/AndroidManifest.xml
           mkdir -p android/app/src/main
           if [ ! -f "$MANIFEST" ]; then
             printf '%s\n' \
-'<?xml version="1.0" encoding="utf-8"?>' \
-'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
-'  <application />' \
-'</manifest>' > "$MANIFEST"
+              '<?xml version="1.0" encoding="utf-8"?>' \
+              '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.ai_navigation_flutter">' \
+              '  <application />' \
+              '</manifest>' > "$MANIFEST"
           fi
 
-      # --- Ikon generálás: csak ha van yaml + ikon kép ---
+      # Ikon generálás: csak ha van yaml + ikon kép
       - name: Generate launcher icons (Android only)
         shell: bash
         run: |
@@ -66,23 +66,18 @@ jobs:
             echo "launcher icon config or image missing; skipping"
           fi
 
-      # --- Splash: ha van flutter_native_splash.yaml, gondoskodunk a dev dep-ről és generálunk ---
-      - name: Ensure flutter_native_splash dev-dependency if splash config exists
+      # Splash: ha van flutter_native_splash.yaml, futtatjuk
+      - name: Generate native splash (Android)
         shell: bash
         run: |
           set -euo pipefail
           if [ -f flutter_native_splash.yaml ]; then
-            # ha nincs lock-ban, ideiglenesen hozzáadjuk a dev dep-et
-            if ! grep -q 'flutter_native_splash' pubspec.lock 2>/dev/null; then
-              dart pub add -d flutter_native_splash@^2.4.1
-            fi
-            flutter pub get
             flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
           else
             echo "no splash yaml; skipping"
           fi
 
-      # --- Debug APK build (dev-friendly signing) ---
+      # Debug APK build (dev-barát aláírás)
       - name: Build DEBUG APK (dev-friendly signing)
         shell: bash
         run: |
@@ -91,7 +86,7 @@ jobs:
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
-      # --- Artefakt feltöltés ---
+      # Artifakt feltöltés
       - uses: actions/upload-artifact@v4
         with:
           name: apk-debug
