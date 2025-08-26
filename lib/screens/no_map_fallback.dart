@@ -29,7 +29,7 @@ class _NoMapFallbackState extends State<NoMapFallback> {
               opacity: 0.15,
               child: Center(
                 child: Image.asset(
-                  'assets/logo.png', // legyen meg az assets-ben
+                  'assets/ai_logo.png', // legyen meg az assets-ben
                   fit: BoxFit.contain,
                 ),
               ),

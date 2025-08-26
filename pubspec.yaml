@@ -27,6 +27,7 @@ dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/ai_logo.png
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
