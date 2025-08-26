@@ -5,49 +5,56 @@ on:
       - "**/*.md"
       - ".github/workflows/lock.yml"
   workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-    - uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: '21'
-    - uses: subosito/flutter-action@v2
-      with:
-        channel: stable
-        cache: true
-    - name: Ensure Android folder (safe)
-      run: |
-        [ -d android ] || flutter create --platforms=android . --no-pub
-    - name: Git cleanup for pub git deps (strong)
-      run: |
-        set -e
-        git config --global --unset-all "http.https://github.com.extraheader" || true
-        git config --global --unset-all "http.https://github.com/.insteadOf" || true
-      
-    - name: Flutter pub get
-      run: flutter pub get
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Force debug signing for release (dev only)
-      run: bash ci/force_debug_release.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
-        if [ -f assets/icon/icon.png ]; then
-          flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
-        else
-          echo "assets/icon/icon.png not found, skipping launcher icon generation"
-        fi
-    - name: Build release APK (auto version)
-      run: |
-        flutter build apk --release \
-          --build-number="$GITHUB_RUN_NUMBER" \
-          --build-name="$(date +%Y.%m.%d).$GITHUB_RUN_NUMBER"
-    - uses: actions/upload-artifact@v4
-      with:
-        name: apk-release
-        path: build/app/outputs/flutter-apk/app-release.apk
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Ensure Android folder (safe)
+        run: |
+          [ -d android ] || flutter create --platforms=android . --no-pub
+
+      - name: Git cleanup for pub git deps (strong)
+        run: |
+          set -e
+          git config --global --unset-all "http.https://github.com.extraheader" || true
+          git config --global --unset-all "http.https://github.com..insteadof" || true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Generate launcher icons if asset present
+        run: |
+          if [ -f assets/icon/icon.png ]; then
+            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
+          else
+            echo "assets/icon/icon.png not found, skipping launcher icon generation"
+          fi
+
+      - name: Build DEBUG APK (dev-friendly signing)
+        run: |
+          flutter build apk --debug \
+            --build-number="$GITHUB_RUN_NUMBER" \
+            --build-name="$(date +%Y.%m.%d).$GITHUB_RUN_NUMBER"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
