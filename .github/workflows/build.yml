@@ -24,27 +24,35 @@ jobs:
         with:
           channel: stable
           cache: true
+
       - name: Flutter pub get
         run: flutter pub get
+
       - name: Ensure Android manifest (safe)
+        shell: bash
         run: |
           mkdir -p android/app/src/main
           if [ ! -f android/app/src/main/AndroidManifest.xml ]; then
-            cat > android/app/src/main/AndroidManifest.xml <<'EOF'
-            <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.example.ai_navigation_flutter">
-              <application/>
-            </manifest>
-            EOF
+          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.example.ai_navigation_flutter">
+            <application/>
+          </manifest>
+EOF
           fi
+
       - name: Generate launcher icons
         run: flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
+
       - name: Generate native splash
         run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
+
       - name: Build DEBUG APK (dev-friendly signing)
-        run: flutter build apk --debug \
-          --build-number="${GITHUB_RUN_NUMBER}" \
-          --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+        run: |
+          flutter build apk --debug \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+
       - uses: actions/upload-artifact@v4
         with:
           name: apk-debug
