@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'app.dart';
-import 'services/fg_service.dart';
 
-void main() async {
+import 'app.dart';
+import 'background_service.dart'; // <- az új V2-es háttérkód
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
-  // Foreground service init (értesítések + engedélyek)
-  await initForegroundTask();
+  // Értesítések + háttérszolgáltatás inicializálása (V2)
+  await initLocalNotifications();
+  await initBackgroundService();
 
-  // Indítsuk el már app startkor (később tehetjük kapcsolóra is a Settingsben)
-  await startForegroundService();
+  // Ha induláskor rögtön menjen a háttér:
+  // (később ez kiemelhető Settings-be egy gombra)
+  // ignore: unawaited_futures
+  // FlutterBackgroundService().startService();
 
   runApp(
     EasyLocalization(
