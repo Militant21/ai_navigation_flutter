@@ -5,7 +5,7 @@
     <!-- Hálózat (Flutter dev-tools és API hívások) -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <application
+ <application
         android:name="${applicationName}"
         android:label="AiNav"
         android:icon="@mipmap/ic_launcher"
