@@ -1,6 +1,11 @@
 name: Flutter APK CI
 on: [push]
 
+name: Flutter APK CI
+on:
+  push:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
