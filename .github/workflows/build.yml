@@ -1,10 +1,12 @@
 name: Flutter APK CI
+
 on:
   push:
     paths-ignore:
       - "**/*.md"
       - ".github/workflows/lock.yml"
   workflow_dispatch:
+
 permissions:
   contents: write
 
@@ -21,8 +23,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Setup Flutter (stable)
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
@@ -34,8 +35,8 @@ jobs:
       - name: Git cleanup for pub git deps (strong)
         run: |
           set -e
-          git config --global --unset-all "http.https://github.com.extrheader" || true
-          git config --global --unset-all "http.https://github.com..insteadOf" || true
+          git config --global --unset-all "http.https://github.com.extr..." || true
+          git config --global --unset-all "http.https://github.com.inst..." || true
 
       - name: Flutter pub upgrade (prefer v2 plugins)
         run: flutter pub upgrade --major-versions
@@ -67,36 +68,33 @@ jobs:
             echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
           fi
 
+      - name: Detect legacy Android v1 plugins
+        shell: bash
+        run: |
+          set -e
+          echo "🔎 Scanning pub-cache for legacy Android v1 plugins"
+          ROOT="$HOME/.pub-cache"
+          hits=$(grep -RIl \
+            -e registerWith \
+            -e io.flutter.plugin.common.PluginRegistry \
+            -e FlutterApplication \
+            -e "FlutterActivity\|FragmentActivity" \
+            "$ROOT/hosted/pub.dev" 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "❌ Legacy v1 plugin implementations detected:"
+            echo "$hits" | sed 's#^#  - #'
+            exit 1
+          else
+            echo "✅ No legacy v1 plugin implementations found."
+          fi
+
       - name: Build DEBUG APK (dev-friendly signing)
-
-    - name: Detect legacy Android v1 plugins
-      run: |
-        echo "🔎 Scanning pub-cache for legacy Android v1 plugins"
-        ROOT="$HOME/.pub-cache"
-        hits=$(grep -RIl           -e "registerWith"           -e "io.flutter.plugin.common.PluginRegistry"           -e "FlutterApplication"           -e "FlutterActivity\|FragmentActivity"           $ROOT/hosted/pub.dev || true)
-        if [ -n "$hits" ]; then
-          echo "❌ Legacy v1 plugin implementations detected:"
-          echo "$hits" | sed "s#^#  - #"
-          exit 1
-        else
-          echo "✅ No legacy v1 plugin implementations found."
-        fi
-
-
-- name: Detect legacy Android v1 plugins
-  run: |
-    echo "🔎 Scanning pub-cache for legacy Android v1 plugins"
-    ROOT="$HOME/.pub-cache"
-    hits=$(grep -RIl       -e "registerWith"       -e "io.flutter.plugin.common.PluginRegistry"       -e "FlutterApplication"       -e "FlutterActivity\|FragmentActivity"       $ROOT/hosted/pub.dev || true)
-    if [ -n "$hits" ]; then
-      echo "❌ Legacy v1 plugin implementations detected:"
-      echo "$hits" | sed "s#^#  - #"
-      exit 1
-    else
-      echo "✅ No legacy v1 plugin implementations found."
-    fi
-
         run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
