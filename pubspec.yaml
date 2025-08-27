@@ -46,3 +46,6 @@ flutter_icons:
   image_path: assets/icon/icon.png
   flutter_native_splash: ^2.4.1
 
+
+dependency_overrides:
+  geolocator_android: 4.6.2
