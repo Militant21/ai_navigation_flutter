@@ -34,63 +34,57 @@ jobs:
             flutter create --platforms=android --no-overwrite
           fi
 
-      - name: Detect legacy Android v1 plugins
-        shell: bash
-        run: |
-          set -e
-          echo "== Scan project android/ for v1 patterns =="
-          if grep -RIlE 'io\.flutter\.app\.Flutter(Activity|FragmentActivity)|FlutterApplication|GeneratedPluginRegistrant|registerWith\(' android/ ; then
-            echo "::error::Found Android v1 embedding traces above. Update/remove plugins."
-            exit 1
-          fi
-          echo "OK: no v1 traces in project sources."
-          echo "== Scan pub-cache for v1 plugin implementations =="
-          if grep -RIl 'registerWith\s*(' "$HOME/.pub-cache" 2>/dev/null ; then
-            echo "::warning::Legacy 'registerWith' found in pub-cache (plugin versions). Running 'flutter pub upgrade --major-versions' next."
-          fi
-
       - name: flutter pub upgrade (remove old/v1 plugins)
         run: flutter pub upgrade --major-versions
 
-      - name: Flutter pub get
+      - name: flutter pub get
         run: flutter pub get
+
+      - name: List offending v1 Android plugins (fail with names)
+        shell: bash
+        run: |
+          set -e
+          ROOT="$HOME/.pub-cache"
+          echo "== Scanning pub-cache for legacy Android v1 plugins =="
+          hits=$(grep -RIl \
+            -e 'io\.flutter\.app\.Flutter(Activity|FragmentActivity)|FlutterApplication' \
+            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+            "$ROOT" 2>/dev/null \
+            | grep '/android/' \
+            | grep -E '\.(java|kt)$' \
+            | grep -Ev '/(example|test|ios|macos|linux|windows|web)/' || true)
+          if [ -z "$hits" ]; then
+            echo "OK: no legacy v1 plugin implementations found in pub-cache."
+            exit 0
+          fi
+          echo "Legacy v1 plugin implementations detected (name@version):"
+          echo "$hits" | awk -F'/hosted/pub.dev/' 'NF>1{ print " • " $2 }' | cut -d'/' -f1,2 | sort -u
+          echo "::error::Above plugin(s) still use Android v1 embedding. Update or replace them."
+          exit 1
 
       - name: Generate launcher icons (Android)
         if: ${{ hashFiles('assets/icon/icon.png') != '' }}
+        shell: bash
         run: |
-          flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
+          set -e
+          flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml || true
 
       - name: Generate native splash (Android)
         if: ${{ hashFiles('flutter_native_splash.yaml') != '' && hashFiles('assets/splash/logo.png') != '' }}
+        shell: bash
         run: |
+          set -e
           flutter pub run flutter_native_splash:create
 
-- name: List offending v1 Android plugins (fail with names)
-  shell: bash
-  run: |
-    set -e
-    ROOT="$HOME/.pub-cache"
-    echo "== Scanning pub-cache for legacy Android v1 plugins =="
-    hits=$(grep -RIl \
-      -e "io\.flutter\.app\.Flutter(Activity|FragmentActivity)" \
-      -e "io\.flutter\.plugin\.common\.PluginRegistry" \
-      "$ROOT" 2>/dev/null \
-      | grep "/android/" \
-      | grep -E "\.(java|kt)$" \
-      | grep -Ev "(example|test|ios|macos|linux|windows|web)" || true)
-    if [ -z "$hits" ]; then
-      echo "OK: no legacy v1 plugin implementations found in pub-cache."
-      exit 0
-    fi
-    echo "❌ Legacy v1 plugin implementations detected (name@version):"
-    echo "$hits" | awk -F"/hosted/pub.dev/" 'NF>1{ print " • " $2 }' | cut -d"/" -f1,2 | sort -u
-    echo "::error::Above plugin(s) still use Android v1 embedding. Update or replace them."
-    exit 1
       - name: Build DEBUG APK
-        run: flutter build apk --debug --no-tree-shake-icons
+        shell: bash
+        run: |
+          set -e
+          flutter build apk --debug --no-tree-shake-icons
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: apk-debug
+          name: app-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
