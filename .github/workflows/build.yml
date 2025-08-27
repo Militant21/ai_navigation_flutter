@@ -80,3 +80,20 @@ jobs:
         with:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
+    - name: Detect legacy Android v1 plugins
+      run: |
+        echo "🔎 Scanning pub-cache for legacy Android v1 plugins"
+        ROOT="$HOME/.pub-cache"
+        hits=$(grep -RIl \
+          -e 'registerWith' \
+          -e 'io.flutter.plugin.common.PluginRegistry' \
+          -e 'FlutterApplication' \
+          -e 'FlutterActivity|FragmentActivity' \
+          $ROOT/hosted/pub.dev || true)
+        if [ -n "$hits" ]; then
+          echo "❌ Legacy v1 plugin implementations detected:"
+          echo "$hits" | sed 's#^#  - #'
+          exit 1
+        else
+          echo "✅ No legacy v1 plugin implementations found."
+        fi
