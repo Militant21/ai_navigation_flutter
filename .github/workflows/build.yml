@@ -26,7 +26,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Ensure Android folder (safe, v2)
+      - name: Ensure Android folder (safe)
         shell: bash
         run: |
           set -e
@@ -40,3 +40,40 @@ jobs:
       - name: flutter pub get
         run: flutter pub get
 
+      - name: Warn legacy Android v1 plugins (list, no fail)
+        shell: bash
+        run: |
+          set -e
+          ROOT="$HOME/.pub-cache"
+          echo "== Scanning pub-cache for legacy Android v1 plugins =="
+          hits=$(grep -RIl \
+            -e 'registerWith\s*(' \
+            -e 'io\.flutter\.app\.Flutter\(Activity\|FragmentActivity\)|FlutterApplication' \
+            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+            "$ROOT" 2>/dev/null | grep '/android/' | grep -E '\.(java|kt)$' \
+            | grep -Ev '/(example|test|ios|macos|linux|windows|web)/' || true)
+          if [ -z "$hits" ]; then
+            echo "OK: no legacy v1 plugin implementations found in pub-cache."
+          else
+            echo "⚠️ Legacy v1 plugin implementations detected (name@version):"
+            echo "$hits" | awk -F'/hosted/pub.dev/' 'NF>1{ print " • " $2 }' | cut -d'/' -f1,2 | sort -u
+            echo "::warning::Above plugin(s) might use Android v1 embedding. Update/replace if needed."
+          fi
+
+      - name: Generate launcher icons (Android)
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Generate native splash (Android)
+        run: flutter pub run flutter_native_splash:create
+
+      - name: Build DEBUG APK
+        shell: bash
+        run: |
+          set -e
+          flutter build apk --debug --no-tree-shake-icons
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
