@@ -1,10 +1,15 @@
 name: Flutter APK CI
-on: [push]
 
-name: Flutter APK CI
 on:
   push:
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: ai_navigation_flutter
 
 jobs:
   build:
@@ -13,22 +18,63 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
-      - uses: subosito/flutter-action@v2
+          java-version: "21"
+
+      - name: Setup Flutter (stable)
+        uses: subosito/flutter-action@v2
         with:
-          channel: beta
-      - uses: actions/cache@v4
-        with:
-          path: ~/.pub-cache
-          key: pubcache-v2-${{ runner.os }}-${{ hashFiles('**/pubspec.yaml') }}
-      - name: Upgrade Flutter packages
+          channel: stable
+          cache: true
+
+      - name: Flutter doctor (info)
+        run: flutter --version
+
+      - name: Ensure Android folder (safe, v2)
+        shell: bash
+        run: |
+          set -e
+          if [ ! -d android ]; then
+            flutter create . --platforms=android --no-overwrite
+          fi
+
+      - name: flutter pub upgrade (remove old/v1 plugins)
         run: flutter pub upgrade --major-versions
-  - name: Upgrade Flutter packages (fix v1 plugins)
-    run: flutter pub upgrade --major-versions
-      - name: Flutter pub get
+
+      - name: flutter pub get
         run: flutter pub get
+
+      - name: Generate launcher icons (Android)
+        shell: bash
+        run: |
+          set -e
+          if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
+            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
+          else
+            echo "Icon config or image missing, skipping launcher icons."
+          fi
+
+      - name: Generate native splash (Android)
+        shell: bash
+        run: |
+          set -e
+          if [ -f flutter_native_splash.yaml ] && [ -f assets/splash/logo.png ]; then
+            flutter pub run flutter_native_splash:create
+          else
+            echo "Splash config or image missing, skipping native splash."
+          fi
+
       - name: Build DEBUG APK
-        run: flutter build apk --debug --no-tree-shake-icons
+        run: |
+          flutter build apk --debug --no-tree-shake-icons \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
