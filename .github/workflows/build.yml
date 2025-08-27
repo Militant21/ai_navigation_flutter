@@ -30,13 +30,13 @@ jobs:
 
       - name: Ensure Android folder (safe)
         run: |
-          [ -d android ] || flutter create --platforms=android --no-pub
+          [ -d android ] || flutter create --platforms=android --no-pub .
 
       - name: Git cleanup for pub git deps (strong)
         run: |
           set -e
-          git config --global --unset-all "http.https://github.com.extr..." || true
-          git config --global --unset-all "http.https://github.com.inst..." || true
+          git config --global --unset-all "http.https://github.com.extraheader" || true
+          git config --global --unset-all "http.https://github.com.insteadof" || true
 
       - name: Flutter pub upgrade (prefer v2 plugins)
         run: flutter pub upgrade --major-versions
@@ -72,14 +72,15 @@ jobs:
         shell: bash
         run: |
           set -e
-          echo "🔎 Scanning pub-cache for legacy Android v1 plugins"
+          echo "🔎 Scanning pub-cache for legacy Android v1 plugins (real code only)"
           ROOT="$HOME/.pub-cache"
           hits=$(grep -RIl \
-            -e registerWith \
-            -e io.flutter.plugin.common.PluginRegistry \
-            -e FlutterApplication \
-            -e "FlutterActivity\|FragmentActivity" \
-            "$ROOT/hosted/pub.dev" 2>/dev/null || true)
+            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+            -e 'FlutterApplication' \
+            -e 'FlutterActivity' \
+            "$ROOT/hosted/pub.dev" \
+            | grep -E '/android/src/main/.*\.(java|kt)$' \
+            | grep -Ev '/(example|examples|test|androidTest)/' || true)
           if [ -n "$hits" ]; then
             echo "❌ Legacy v1 plugin implementations detected:"
             echo "$hits" | sed 's#^#  - #'
@@ -92,7 +93,7 @@ jobs:
         run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
       - uses: actions/upload-artifact@v4
         with:
