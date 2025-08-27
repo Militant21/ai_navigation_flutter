@@ -49,6 +49,4 @@ flutter_icons:
 
 dependency_overrides:
   geolocator_android: 4.6.2
-
-dependency_overrides:
   flutter_foreground_task: 9.0.0
