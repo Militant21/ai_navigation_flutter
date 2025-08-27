@@ -48,4 +48,3 @@ flutter_icons:
 
 dependency_overrides:
   geolocator_android: ^5.0.2
-  geolocator_android: ^5.0.2
