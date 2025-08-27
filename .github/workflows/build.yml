@@ -7,15 +7,19 @@ on:
 permissions:
   contents: write
 
+jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4   # hagyjuk a defaultot, hogy tudjon push-olni
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: '21'
 
       - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
@@ -28,7 +32,7 @@ permissions:
         run: |
           set -e
           if [ ! -d android ]; then
-            flutter create . --platforms=android --no-overwrite
+            flutter create --platforms=android . --no-overwrite
           fi
 
       - name: flutter pub upgrade (remove old/v1 plugins)
@@ -38,6 +42,7 @@ permissions:
         run: flutter pub get
 
       - name: Generate launcher icons (Android)
+        if: ${{ hashFiles('flutter_launcher_icons-android.yaml', 'assets/icon/icon.png') != '' }}
         shell: bash
         run: |
           set -e
@@ -48,6 +53,7 @@ permissions:
           fi
 
       - name: Generate native splash (Android)
+        if: ${{ hashFiles('flutter_native_splash.yaml', 'assets/splash/logo.png') != '' }}
         shell: bash
         run: |
           set -e
@@ -57,29 +63,8 @@ permissions:
             echo "Splash config or image missing, skipping native splash."
           fi
 
-      - name: Commit generated Android assets (icons + splash)
-        if: ${{ github.ref == 'refs/heads/main' }}
-        shell: bash
-        run: |
-          set -e
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add android/app/src/main/res || true
-          git add android/app/src/main/AndroidManifest.xml || true
-          git add android/app/src/main/res/values/styles.xml || true
-          git add android/app/src/main/res/drawable*/launch_background.xml || true
-          if ! git diff --cached --quiet; then
-            git commit -m "ci: update generated launcher icons & native splash (Android)"
-            git push
-          else
-            echo "No changes to commit."
-          fi
-
       - name: Build DEBUG APK
-        run: |
-          flutter build apk --debug --no-tree-shake-icons \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+        run: flutter build apk --debug --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
