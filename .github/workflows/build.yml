@@ -10,7 +10,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,46 +31,40 @@ jobs:
         run: |
           set -e
           if [ ! -d android ]; then
-            flutter create --platforms=android . --no-overwrite
+            flutter create --platforms=android --no-overwrite
+          fi
+
+      - name: Detect legacy Android v1 plugins
+        shell: bash
+        run: |
+          set -e
+          echo "== Scan project android/ for v1 patterns =="
+          if grep -RIlE 'io\.flutter\.app\.Flutter(Activity|FragmentActivity)|FlutterApplication|GeneratedPluginRegistrant|registerWith\(' android/ ; then
+            echo "::error::Found Android v1 embedding traces above. Update/remove plugins."
+            exit 1
+          fi
+          echo "OK: no v1 traces in project sources."
+          echo "== Scan pub-cache for v1 plugin implementations =="
+          if grep -RIl 'registerWith\s*(' "$HOME/.pub-cache" 2>/dev/null ; then
+            echo "::warning::Legacy 'registerWith' found in pub-cache (plugin versions). Running 'flutter pub upgrade --major-versions' next."
           fi
 
       - name: flutter pub upgrade (remove old/v1 plugins)
         run: flutter pub upgrade --major-versions
 
-      - name: flutter pub get
+      - name: Flutter pub get
         run: flutter pub get
 
       - name: Generate launcher icons (Android)
-        if: ${{ hashFiles('flutter_launcher_icons-android.yaml', 'assets/icon/icon.png') != '' }}
-        shell: bash
+        if: ${{ hashFiles('assets/icon/icon.png') != '' }}
         run: |
-          set -e
-          if [ -f flutter_launcher_icons-android.yaml ] && [ -f assets/icon/icon.png ]; then
-            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
-          else
-            echo "Icon config or image missing, skipping launcher icons."
-          fi
+          flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
 
       - name: Generate native splash (Android)
-        if: ${{ hashFiles('flutter_native_splash.yaml', 'assets/splash/logo.png') != '' }}
-        shell: bash
+        if: ${{ hashFiles('flutter_native_splash.yaml') != '' && hashFiles('assets/splash/logo.png') != '' }}
         run: |
-          set -e
-          if [ -f flutter_native_splash.yaml ] && [ -f assets/splash/logo.png ]; then
-            flutter pub run flutter_native_splash:create
-          else
-            echo "Splash config or image missing, skipping native splash."
-          fi
+          flutter pub run flutter_native_splash:create
 
-  - name: Detect legacy Android v1 plugins
-    run: |
-      set -e
-      echo "== Pub deps (compact) =="
-      flutter pub deps --style=compact || true
-      echo "== Scan project android/ for v1 patterns =="
-      grep -RInE "io\.flutter\.app\.Flutter(Activity|FragmentActivity)|FlutterApplication|GeneratedPluginRegistrant|registerWith\(" android/ || true
-      echo "== Scan .pub-cache for v1 plugin implementations =="
-      grep -RIl "registerWith\s*\(" "$HOME/.pub-cache" || true
       - name: Build DEBUG APK
         run: flutter build apk --debug --no-tree-shake-icons
 
