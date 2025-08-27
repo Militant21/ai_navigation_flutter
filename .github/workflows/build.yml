@@ -7,11 +7,6 @@ on:
 permissions:
   contents: write
 
-defaults:
-  run:
-    working-directory: ai_navigation_flutter
-
-jobs:
   build:
     runs-on: ubuntu-latest
     steps:
