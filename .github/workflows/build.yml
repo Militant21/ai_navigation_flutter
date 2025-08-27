@@ -2,6 +2,9 @@ name: Flutter APK CI
 
 on:
   push:
+    paths-ignore:
+      - "**/*.md"
+      - ".github/workflows/lock.yml"
   workflow_dispatch:
 
 permissions:
@@ -27,53 +30,53 @@ jobs:
           cache: true
 
       - name: Ensure Android folder (safe)
-        shell: bash
+        run: |
+          [ -d android ] || flutter create --platforms=android --no-pub
+
+      - name: Git cleanup for pub git deps (strong)
         run: |
           set -e
-          if [ ! -d android ]; then
-            flutter create --platforms=android --no-overwrite
-          fi
+          git config --global --unset-all "http.https://github.com.extraheader" || true
+          git config --global --unset-all "http.https://github.com/.insteadOf" || true
 
-      - name: flutter pub upgrade (remove old/v1 plugins)
+      - name: Flutter pub upgrade (prefer v2 plugins)
         run: flutter pub upgrade --major-versions
 
-      - name: flutter pub get
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Warn legacy Android v1 plugins (list, no fail)
+      - name: Force debug signing for release (dev only)
+        run: bash ci/force_debug_release.sh
+
+      - name: Flutter pub get (again)
+        run: flutter pub get
+
+      - name: Generate launcher icons if asset present
         shell: bash
         run: |
-          set -e
-          ROOT="$HOME/.pub-cache"
-          echo "== Scanning pub-cache for legacy Android v1 plugins =="
-          hits=$(grep -RIl \
-            -e 'registerWith\s*(' \
-            -e 'io\.flutter\.app\.Flutter\(Activity\|FragmentActivity\)|FlutterApplication' \
-            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-            "$ROOT" 2>/dev/null | grep '/android/' | grep -E '\.(java|kt)$' \
-            | grep -Ev '/(example|test|ios|macos|linux|windows|web)/' || true)
-          if [ -z "$hits" ]; then
-            echo "OK: no legacy v1 plugin implementations found in pub-cache."
+          if [ -f assets/icon/icon.png ]; then
+            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
           else
-            echo "⚠️ Legacy v1 plugin implementations detected (name@version):"
-            echo "$hits" | awk -F'/hosted/pub.dev/' 'NF>1{ print " • " $2 }' | cut -d'/' -f1,2 | sort -u
-            echo "::warning::Above plugin(s) might use Android v1 embedding. Update/replace if needed."
+            echo "assets/icon/icon.png not found, skipping launcher icon generation."
           fi
 
-      - name: Generate launcher icons (Android)
-        run: flutter pub run flutter_launcher_icons
-
-      - name: Generate native splash (Android)
-        run: flutter pub run flutter_native_splash:create
-
-      - name: Build DEBUG APK
+      - name: Generate native splash (if configured)
         shell: bash
         run: |
-          set -e
-          flutter build apk --debug --no-tree-shake-icons
+          if grep -Eq '^\s*flutter_native_splash\s*:' pubspec.yaml; then
+            flutter pub run flutter_native_splash:create
+          else
+            echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
+          fi
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Build DEBUG APK (dev-friendly signing)
+        shell: bash
+        run: |
+          flutter build apk --debug \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
