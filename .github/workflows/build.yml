@@ -21,6 +21,8 @@ jobs:
           key: pubcache-v2-${{ runner.os }}-${{ hashFiles('**/pubspec.yaml') }}
       - name: Upgrade Flutter packages
         run: flutter pub upgrade --major-versions
+  - name: Upgrade Flutter packages (fix v1 plugins)
+    run: flutter pub upgrade --major-versions
       - name: Flutter pub get
         run: flutter pub get
       - name: Build DEBUG APK
