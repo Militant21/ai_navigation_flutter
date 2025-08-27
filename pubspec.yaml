@@ -1,6 +1,5 @@
 name: ai_navigation_flutter
 publish_to: 'none'
-description: Offline truck-first navigation (EU+UK)
 version: 0.1.1
 
 environment:
@@ -8,6 +7,8 @@ environment:
 
 dependencies:
   flutter: { sdk: flutter }
+
+  # meglévők – maradhatnak
   flutter_map: ^6.2.1
   vector_map_tiles: ^7.0.0
   vector_map_tiles_pmtiles: ^1.1.0
@@ -22,7 +23,11 @@ dependencies:
   url_launcher: ^6.3.0
   http: ^1.2.2
   collection: ^1.18.0
-  flutter_foreground_task: 9.0.0
+
+  # ÚJAK – V2 háttér + értesítés
+  flutter_background_service: ^5.0.6
+  flutter_local_notifications: ^17.2.2
+  workmanager: ^0.5.2
 
 flutter:
   uses-material-design: true
@@ -32,21 +37,14 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
-    -
+    - assets/logo.svg
 
 dev_dependencies:
   flutter_test: { sdk: flutter }
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.14.0
 
-  flutter_native_splash: ^2.4.1
-flutter_icons:
+flutter_native_splash:
   android: true
   ios: true
   image_path: assets/icon/icon.png
-  flutter_native_splash: ^2.4.1
-
-
-dependency_overrides:
-  geolocator_android: 4.6.2
-  flutter_foreground_task: 9.0.0
