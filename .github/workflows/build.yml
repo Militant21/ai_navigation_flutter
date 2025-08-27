@@ -63,6 +63,15 @@ jobs:
             echo "Splash config or image missing, skipping native splash."
           fi
 
+  - name: Detect legacy Android v1 plugins
+    run: |
+      set -e
+      echo "== Pub deps (compact) =="
+      flutter pub deps --style=compact || true
+      echo "== Scan project android/ for v1 patterns =="
+      grep -RInE "io\.flutter\.app\.Flutter(Activity|FragmentActivity)|FlutterApplication|GeneratedPluginRegistrant|registerWith\(" android/ || true
+      echo "== Scan .pub-cache for v1 plugin implementations =="
+      grep -RIl "registerWith\s*\(" "$HOME/.pub-cache" || true
       - name: Build DEBUG APK
         run: flutter build apk --debug --no-tree-shake-icons
 
