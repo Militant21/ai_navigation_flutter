@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 import 'app.dart';
-import 'background_service.dart'; // <- az új V2-es háttérkód
+import 'background_services.dart'; // <- az új V2-es háttérkód
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
