@@ -103,6 +103,56 @@ jobs:
           else
             echo "No legacy v1 plugin implementations found."
           fi
+- name: Pre-merge manifest (debug) and dump it
+        shell: bash
+        run: |
+          set -e
+          cd android
+          ./gradlew :app:processDebugMainManifest --no-daemon --stacktrace
+          echo "---- merged manifest path:"
+          MF="app/build/intermediates/merged_manifests/debug/AndroidManifest.xml"
+          ls -l "$MF"
+          echo "---- first 60 lines:"
+          head -n 60 "$MF" || true
+          echo "---- scan for V1 markers:"
+          if grep -nE 'applicationName|FlutterApplication|io\.flutter\.app|GeneratedPluginRegistrant' "$MF"; then
+            echo "❌ V1-nyom talált a MERGED manifestben – ezt előbb meg kell szüntetni."
+            exit 1
+          else
+            echo "✅ Merged manifest tiszta (V2-only)."
+          fi
+          cd ..
+
+      - name: Scan app sources for V1 markers
+        shell: bash
+        run: |
+          set -e
+          echo "---- scan android/app/src for V1 imports / registrant calls"
+          if grep -RInE 'io\.flutter\.app|FlutterApplication|GeneratedPluginRegistrant' android/app/src; then
+            echo "❌ V1-nyom talált a projekt forrásban."
+            exit 1
+          else
+            echo "✅ Nincs V1 import a projekt kódjában."
+          fi
+
+      - name: Scan pub-cache (plugins) for hard V1 usage (warn-only)
+        shell: bash
+        run: |
+          set -e
+          ROOT="$HOME/.pub-cache/hosted/pub.dev"
+          echo "---- scan plugins for real V1 impl (not shims), warn-only"
+          hits=$(grep -RIl \
+            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+            -e 'registerWith\(.*PluginRegistry' \
+            "$ROOT" 2>/dev/null | grep -E '/android/src/main/.*\.(java|kt)$' \
+            | grep -Ev '/(example|examples|test|androidTest)/' || true)
+          if [ -n "$hits" ]; then
+            echo "⚠️  Lehetséges V1 plugin implementáció:"
+            echo "$hits" | sed 's#^#  - #'
+          else
+            echo "✅ Nem találtam egyértelmű V1 implementációt a pluginekben."
+          fi
+
 
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
