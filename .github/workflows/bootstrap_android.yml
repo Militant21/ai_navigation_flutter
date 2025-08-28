@@ -1,0 +1,58 @@
+name: Bootstrap Android folder (one-time)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.2"
+          channel: "stable"
+          cache: true
+
+      - name: Generate android/ (once)
+        run: |
+          flutter create --platforms=android --no-pub .
+
+      - name: Pub get (optional, hogy a pluginok generált file-jai is meglegyenek)
+        run: flutter pub get
+
+      # (OPCIONÁLIS) ha van sablon Manifested, ide lemásoljuk:
+      # - name: Apply your AndroidManifest template
+      #   run: |
+      #     mkdir -p android/app/src/main
+      #     cp -f ci/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
+      # Ha szeretnél ikon/splash generálást is első körben:
+      # - name: Generate icons/splash (optional)
+      #   run: |
+      #     flutter pub run flutter_launcher_icons
+      #     flutter pub run flutter_native_splash:create
+
+      - name: Commit android/ to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android
+          # Ha .gitignore tiltja a gradle wrapper fájlokat, ezeket is add-oljuk kifejezetten:
+          git add -f android/gradlew android/gradlew.bat android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.properties
+          git commit -m "Add generated android/ folder (bootstrap)"
+          git push
