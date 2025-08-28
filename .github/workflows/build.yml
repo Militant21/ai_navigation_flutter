@@ -39,8 +39,22 @@ jobs:
           set -e
           if [ ! -d android ] || [ ! -f android/gradlew ]; then
             echo "Recreating Android platform (missing or incomplete)..."
-            rm -rf android
+            # mentsük el a pubspecet (és bármi mást, amit nem akarunk elveszíteni)
+            cp pubspec.yaml /tmp/pubspec.yaml.bak 2>/dev/null || true
+            # opcionális: ha van saját lib/, mentsd ezt is
+            tar -czf /tmp/lib_backup.tgz lib 2>/dev/null || true
+
+            # android újragenerálása
             flutter create --platforms=android --no-pub --overwrite .
+
+            # visszaállítás
+            if [ -f /tmp/pubspec.yaml.bak ]; then
+              mv /tmp/pubspec.yaml.bak pubspec.yaml
+            fi
+            if [ -f /tmp/lib_backup.tgz ]; then
+              rm -rf lib && mkdir -p lib
+              tar -xzf /tmp/lib_backup.tgz -C .
+            fi
           else
             echo "Android folder and gradlew present."
           fi
