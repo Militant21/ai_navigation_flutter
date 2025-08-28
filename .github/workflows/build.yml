@@ -129,39 +129,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apk-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk            echo "❌ A merged manifest még V1-nyomot tartalmaz. Lásd fent a sorokat."
-            exit 1
-          fi
-          echo "✅ Merged manifest V2-tiszta."
-
-      # (opcionális) figyelmeztetés 3rd party V1 pluginek kódjára – regex egyszerűsítve, nincs ( ) hiba
-      - name: Detect legacy Android v1 plugins (warn-only)
-        shell: bash
-        run: |
-          set -e
-          ROOT="$HOME/.pub-cache/hosted/pub.dev"
-          echo "🔎 Scanning $ROOT for PluginRegistry usage (warn-only)"
-          hits=$(grep -RIl 'io\.flutter\.plugin\.common\.PluginRegistry' "$ROOT" | grep -E '/android/src/main/.*\.(java|kt)$' | grep -Ev '/(example|examples|test|androidTest)/' || true)
-          if [ -n "$hits" ]; then
-            echo "⚠️ Possible v1 plugin shims (warn-only):"
-            echo "$hits" | sed 's#^#  - #'
-          else
-            echo "✅ No obvious v1 plugin shims."
-          fi
-
-      - name: Build DEBUG APK (dev-friendly signing)
-        run: |
-          flutter build apk --debug \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
