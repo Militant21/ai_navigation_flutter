@@ -1,6 +1,12 @@
 name: Flutter APK CI
 
 on:
+  # Fussa automatikusan a lock workflow után
+  workflow_run:
+    workflows: ["Flutter pub lock CI"]
+    types: [completed]
+
+  # Maradjon push és kézi indítás is
   push:
     paths-ignore:
       - "**/*.md"
@@ -8,11 +14,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  actions: read
+  contents: read
 
 jobs:
   build:
+    # Csak akkor építsen, ha a lock sikeres volt (ha onnan jöttünk)
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,7 +36,17 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.35.2'
           cache: true
+
+      # Lock workflow-ból jövő pubspec.lock átvétele (ha van)
+      - name: Download pubspec.lock from lock workflow
+        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: pubspec-lock
+          run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true
 
       - name: Ensure Android folder (safe)
         run: |
@@ -41,14 +61,8 @@ jobs:
       - name: Resolve packages
         run: flutter pub get
 
-      - name: Flutter pub get
-        run: flutter pub get
-
       - name: Force debug signing for release (dev only)
         run: bash ci/force_debug_release.sh
-
-      - name: Flutter pub get (again)
-        run: flutter pub get
 
       - name: Generate launcher icons if asset present
         shell: bash
@@ -68,23 +82,21 @@ jobs:
             echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
           fi
 
-      - name: Detect legacy Android v1 plugins
+      - name: Detect legacy Android v1 plugins (warn-only)
         shell: bash
         run: |
           set -e
-          echo "🔎 Scanning pub-cache for legacy Android v1 plugins (real code only)"
+          echo "🔎 Scanning pub-cache for legacy Android v1 plugins (real code only, warn-only)"
           ROOT="$HOME/.pub-cache"
           hits=$(grep -RIl \
             -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-            -e 'FlutterApplication' \
-            -e 'FlutterActivity' \
+            -e 'registerWith\(.*PluginRegistry' \
             "$ROOT/hosted/pub.dev" \
             | grep -E '/android/src/main/.*\.(java|kt)$' \
             | grep -Ev '/(example|examples|test|androidTest)/' || true)
           if [ -n "$hits" ]; then
-            echo "❌ Legacy v1 plugin shims detected (warning only):"
+            echo "⚠️ Legacy v1 plugin shims detected (warning only):"
             echo "$hits" | sed 's#^#  - #'
-            true # warn-only: allow 3P v1 shims
           else
             echo "✅ No legacy v1 plugin implementations found."
           fi
@@ -99,3 +111,4 @@ jobs:
         with:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
+```0
