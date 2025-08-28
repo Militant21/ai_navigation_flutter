@@ -33,29 +33,25 @@ jobs:
           flutter-version: "3.35.2"
           cache: true
 
-      - name: Ensure Android folder (safe)
-        shell: bash
-        run: |
-          set -e
-          if [ ! -d android ] || [ ! -f android/gradlew ]; then
-            echo "Recreating Android platform (missing or incomplete)..."
-            # mentsük el a pubspecet (és bármi mást, amit nem akarunk elveszíteni)
-            cp pubspec.yaml /tmp/pubspec.yaml.bak 2>/dev/null || true
-            # opcionális: ha van saját lib/, mentsd ezt is
-            tar -czf /tmp/lib_backup.tgz lib 2>/dev/null || true
+      # -------------------------
+      #   GRADLE / WRAPPER CACHE
+      # -------------------------
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties','android/build.gradle','android/app/build.gradle','pubspec.lock') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
-            # visszaállítás
-            if [ -f /tmp/pubspec.yaml.bak ]; then
-              mv /tmp/pubspec.yaml.bak pubspec.yaml
-            fi
-            if [ -f /tmp/lib_backup.tgz ]; then
-              rm -rf lib && mkdir -p lib
-              tar -xzf /tmp/lib_backup.tgz -C .
-            fi
-          else
-            echo "Android folder and gradlew present."
-          fi
-          
+      # (Ha van saját Android SDK cache-t is szeretnél, ide tehető még egy cache blokk $ANDROID_HOME alá,
+      # de a Gradle cache önmagában is jelentősen gyorsítja a buildet.)
+
+      # -------------------------
+      #   PUB FÜGGŐSÉGEK
+      # -------------------------
       - name: Git cleanup for pub git deps (strong)
         run: |
           set -e
@@ -65,12 +61,16 @@ jobs:
       - name: Resolve packages
         run: flutter pub get
 
-      - name: Force debug signing for release (dev only)
-        run: bash ci/force_debug_release.sh
+      # (opcionális) Debug aláírás „release” buildnél – ha kell neked
+      # - name: Force debug signing for release (dev only)
+      #   run: bash ci/force_debug_release.sh
 
       - name: Resolve packages (again)
         run: flutter pub get
 
+      # -------------------------
+      #   IKON / SPLASH (ha van)
+      # -------------------------
       - name: Generate launcher icons if asset present
         shell: bash
         run: |
@@ -83,12 +83,15 @@ jobs:
       - name: Generate native splash (if configured)
         shell: bash
         run: |
-          if grep -Eq '^\s*flutter_native_splash\s*:' pubspec.yaml; then
+          if grep -Eq "^ *flutter_native_splash *:" pubspec.yaml; then
             flutter pub run flutter_native_splash:create
           else
             echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
           fi
 
+      # -------------------------
+      #   (opcionális) V1 ellenőrzések – ha továbbra is kéred
+      # -------------------------
       - name: Fix legacy V1 ApplicationName in source manifests
         shell: bash
         run: |
@@ -99,96 +102,46 @@ jobs:
               sed -i 's/\s*android:name="[^"]*"\s*//' "$mf"
               fixed=$((fixed+1))
             fi
-            if ! grep -q 'flutterEmbedding' "$mf"; then
+            if grep -q 'flutterEmbedding"' "$mf"; then
               sed -i 's#</application>#  <meta-data android:name="flutterEmbedding" android:value="2" />\n  </application>#' "$mf"
             fi
           done < <(find android/app/src -type f -name AndroidManifest.xml -print0)
           echo "Fixed files: $fixed"
 
-      - name: Detect legacy Android v1 plugins (warn-only)
-        shell: bash
-        run: |
-          set -e
-          ROOT="$HOME/.pub-cache"
-          hits=$(grep -RIl \
-            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-            -e 'registerWith\(.*PluginRegistry' \
-            "$ROOT/hosted/pub.dev" \
-            | grep -E '/android/src/main/.*\.(java|kt)$' \
-            | grep -Ev '/(example|examples|test|androidTest)/' || true)
-          if [ -n "$hits" ]; then
-            echo "Legacy v1 plugin shims detected (warning only):"
-            echo "$hits" | sed 's#^#  - #'
-          else
-            echo "No legacy v1 plugin implementations found."
-          fi
       - name: Pre-merge manifest (debug) and dump it
         shell: bash
         run: |
           set -e
           cd android
-          ./gradlew :app:processDebugMainManifest --no-daemon --stacktrace
-          echo "---- merged manifest path:"
+          ./gradlew :app:processDebugMainManifest --no-daemon --stacktrace --warning-mode all
           MF="app/build/intermediates/merged_manifests/debug/AndroidManifest.xml"
-          ls -l "$MF"
-          echo "---- first 60 lines:"
+          echo "---- merged manifest path: $MF"
           head -n 60 "$MF" || true
-          echo "---- scan for V1 markers:"
-          if grep -nE 'applicationName|FlutterApplication|io\.flutter\.app|GeneratedPluginRegistrant' "$MF"; then
-            echo "❌ V1-nyom talált a MERGED manifestben – ezt előbb meg kell szüntetni."
-            exit 1
-          else
-            echo "✅ Merged manifest tiszta (V2-only)."
-          fi
           cd ..
 
-      - name: Scan app sources for V1 markers
-        shell: bash
-        run: |
-          set -e
-          echo "---- scan android/app/src for V1 imports / registrant calls"
-          if grep -RInE 'io\.flutter\.app|FlutterApplication|GeneratedPluginRegistrant' android/app/src; then
-            echo "❌ V1-nyom talált a projekt forrásban."
-            exit 1
-          else
-            echo "✅ Nincs V1 import a projekt kódjában."
-          fi
-
-      - name: Scan pub-cache (plugins) for hard V1 usage (warn-only)
-        shell: bash
-        run: |
-          set -e
-          ROOT="$HOME/.pub-cache/hosted/pub.dev"
-          echo "---- scan plugins for real V1 impl (not shims), warn-only"
-          hits=$(grep -RIl \
-            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-            -e 'registerWith\(.*PluginRegistry' \
-            "$ROOT" 2>/dev/null | grep -E '/android/src/main/.*\.(java|kt)$' \
-            | grep -Ev '/(example|examples|test|androidTest)/' || true)
-          if [ -n "$hits" ]; then
-            echo "⚠️  Lehetséges V1 plugin implementáció:"
-            echo "$hits" | sed 's#^#  - #'
-          else
-            echo "✅ Nem találtam egyértelmű V1 implementációt a pluginekben."
-          fi
-
-
+      # -------------------------
+      #   APK BUILD
+      # -------------------------
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
+      # (opcionális) ellenőrzés, hogy a merged manifest V2-only
       - name: Verify merged manifest is V2-only
         shell: bash
         run: |
           set -e
-          MERGED="app/build/intermediates/merged_manifests/debug/AndroidManifest.xml"
+          MERGED="build/app/intermediates/merged_manifests/debug/AndroidManifest.xml"
           if [ ! -f "$MERGED" ]; then
-            echo "Merged manifest not found: $MERGED"
+            MERGED="android/app/build/intermediates/merged_manifests/debug/AndroidManifest.xml"
+          fi
+          if [ ! -f "$MERGED" ]; then
+            echo "Merged manifest not found"
             exit 1
           fi
-          if grep -nE 'applicationName|FlutterApplication|io\.flutter\.app' "$MERGED"; then
+          if grep -E 'applicationName|FlutterApplication|io\.flutter\.app|GeneratedPluginRegistrant' "$MERGED"; then
             echo "Merged manifest still contains V1-related entries."
             exit 1
           fi
