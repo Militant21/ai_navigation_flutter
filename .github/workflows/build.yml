@@ -38,8 +38,8 @@ jobs:
           git config --global --unset-all "http.https://github.com.extraheader" || true
           git config --global --unset-all "http.https://github.com.insteadof" || true
 
-      - name: Flutter pub upgrade (prefer v2 plugins)
-        run: flutter pub upgrade --major-versions
+      - name: Resolve packages
+        run: flutter pub get
 
       - name: Flutter pub get
         run: flutter pub get
