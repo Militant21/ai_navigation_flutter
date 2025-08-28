@@ -13,7 +13,7 @@ dependencies:
   # meglévők – maradhatnak
   flutter_map: ^6.2.1
   vector_map_tiles: ^7.0.0
-  vector_map_tiles_pmtiles: ^1.1.0   # <- EZ a jó csomagnév
+  vector_map_tiles_pmtiles: ">=1.1.0 <2.0.0"  # <- EZ a jó csomagnév
   vector_tile_renderer: ^5.2.1   
   latlong2: ^0.9.1
   background_downloader: ^9.2.3
@@ -66,3 +66,6 @@ flutter_launcher_icons:
   image_path: assets/icon/icon.png
   min_sdk_android: 21
   remove_alpha_ios: true
+
+dependency_overrides:
+  vector_tile_renderer: "5.2.1"
