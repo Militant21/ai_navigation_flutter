@@ -2,17 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.ai_navigation_flutter">
 
-    <!-- Hely + háttér + foreground service + értesítések -->
+    <!-- Hely + foreground service + háttér + értesítések + net -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name="${applicationName}"
         android:label="AiNav"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
@@ -25,16 +23,15 @@
             android:theme="@style/NormalTheme"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|density|uiMode">
 
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
-        <!-- Flutter V2 embedding jelző -->
+        <!-- Flutter V2 jelző -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
