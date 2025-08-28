@@ -3,8 +3,8 @@ import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-/// Gyors téma helper – a 5.x rendererben van `createDayTheme()`.
-vtr.Theme defaultMapTheme() => vtr.createDayTheme();
+/// Semleges alap téma (5.x renderer)
+vtr.Theme defaultMapTheme() => vtr.createDefaultTheme();
 
 /// PMTiles fájlból VectorTileLayer készítése.
 Future<VectorTileLayer> pmtilesLayer(
@@ -15,8 +15,10 @@ Future<VectorTileLayer> pmtilesLayer(
     throw StateError('PMTiles file not found: ${pmtilesFile.path}');
   }
 
+  // Helyes provider példányosítás (konstruktor)
   final prov = await PmTilesVectorTileProvider.fromSource(pmtilesFile.path);
 
+  // A Protomaps témák a 'protomaps' forrásnévre számítanak.
   return VectorTileLayer(
     theme: theme ?? defaultMapTheme(),
     tileProviders: TileProviders({'protomaps': prov}),
