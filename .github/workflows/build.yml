@@ -13,23 +13,26 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: '3.35.2'
+          flutter-version: "3.35.2"
           cache: true
 
-      # Ha nincs android/ mappa, generáljuk (később takarítunk)
       - name: Ensure Android folder (safe)
         run: |
           [ -d android ] || flutter create --platforms=android --no-pub .
@@ -45,6 +48,9 @@ jobs:
 
       - name: Force debug signing for release (dev only)
         run: bash ci/force_debug_release.sh
+
+      - name: Resolve packages (again)
+        run: flutter pub get
 
       - name: Generate launcher icons if asset present
         shell: bash
@@ -64,47 +70,66 @@ jobs:
             echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
           fi
 
-      # --- V1 maradék automata takarítás a forrás manifest(ek)ben ---
       - name: Fix legacy V1 ApplicationName in source manifests
         shell: bash
         run: |
           set -e
-          shopt -s globstar || true
           fixed=0
-          for f in android/app/src/**/AndroidManifest.xml; do
-            [ -f "$f" ] || continue
-            if grep -q 'android:name="${applicationName}"' "$f"; then
-              echo "Fixing: $f"
-              sed -i 's/\s*android:name="${applicationName}"//g' "$f"
+          while IFS= read -r -d '' mf; do
+            if grep -q 'android:name=' "$mf"; then
+              sed -i 's/\s*android:name="[^"]*"\s*//' "$mf"
               fixed=$((fixed+1))
             fi
-          done
+            if ! grep -q 'flutterEmbedding' "$mf"; then
+              sed -i 's#</application>#  <meta-data android:name="flutterEmbedding" android:value="2" />\n  </application>#' "$mf"
+            fi
+          done < <(find android/app/src -type f -name AndroidManifest.xml -print0)
           echo "Fixed files: $fixed"
-          # forrás fa ellenőrzése
-          if grep -Rni --include="AndroidManifest.xml" 'applicationName\|FlutterApplication\|io\.flutter\.app' android/app/src; then
-            echo "❌ V1 nyom maradt a forrás manifestben."
-            exit 1
-          fi
-          echo "✅ Forrás manifest(ek) V1-tiszta."
 
-      # --- Merged manifest ellenőrzés (ez dönt a buildről) ---
-      - name: Verify merged manifest is V2-only
+      - name: Detect legacy Android v1 plugins (warn-only)
         shell: bash
-        working-directory: android
         run: |
           set -e
-          ./gradlew :app:processDebugMainManifest --no-daemon --stacktrace
+          ROOT="$HOME/.pub-cache"
+          hits=$(grep -RIl \
+            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+            -e 'registerWith\(.*PluginRegistry' \
+            "$ROOT/hosted/pub.dev" \
+            | grep -E '/android/src/main/.*\.(java|kt)$' \
+            | grep -Ev '/(example|examples|test|androidTest)/' || true)
+          if [ -n "$hits" ]; then
+            echo "Legacy v1 plugin shims detected (warning only):"
+            echo "$hits" | sed 's#^#  - #'
+          else
+            echo "No legacy v1 plugin implementations found."
+          fi
+
+      - name: Build DEBUG APK (dev-friendly signing)
+        run: |
+          flutter build apk --debug \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+
+      - name: Verify merged manifest is V2-only
+        shell: bash
+        run: |
+          set -e
           MERGED="app/build/intermediates/merged_manifests/debug/AndroidManifest.xml"
           if [ ! -f "$MERGED" ]; then
-            echo "❌ Merged manifest not found at $MERGED"
-            find app/build/intermediates/merged_manifests -maxdepth 2 -type f -name AndroidManifest.xml || true
+            echo "Merged manifest not found: $MERGED"
             exit 1
           fi
-          echo "Merged manifest at: $MERGED"
-          echo "---- offending lines (if any) ----"
           if grep -nE 'applicationName|FlutterApplication|io\.flutter\.app' "$MERGED"; then
-            echo "----------------------------------"
-            echo "❌ A merged manifest még V1-nyomot tartalmaz. Lásd fent a sorokat."
+            echo "Merged manifest still contains V1-related entries."
+            exit 1
+          fi
+          echo "Merged manifest is clean (V2-only)."
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk            echo "❌ A merged manifest még V1-nyomot tartalmaz. Lásd fent a sorokat."
             exit 1
           fi
           echo "✅ Merged manifest V2-tiszta."
