@@ -44,9 +44,6 @@ jobs:
             # opcionális: ha van saját lib/, mentsd ezt is
             tar -czf /tmp/lib_backup.tgz lib 2>/dev/null || true
 
-            # android újragenerálása
-            flutter create --platforms=android --no-pub --overwrite .
-
             # visszaállítás
             if [ -f /tmp/pubspec.yaml.bak ]; then
               mv /tmp/pubspec.yaml.bak pubspec.yaml
