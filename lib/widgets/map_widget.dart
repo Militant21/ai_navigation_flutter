@@ -1,13 +1,13 @@
 // Egy önálló térkép widget, ami .pmtiles-ből rajzol, EGYEDI (async) témával.
 
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
+import 'package:vector_map_tiles/vector_map_tiles.dart' as vmt;
 
-import '../theme/map_themes.dart';          // createDayTheme / createNightTheme
-import '../services/tiles_provider.dart';   // pmtilesLayer()
+import '../theme/map_themes.dart';       // createDayTheme / createNightTheme
+import '../services/tiles_provider.dart'; // pmtilesLayer()
 
 class MyMapWidget extends StatefulWidget {
   /// A PMTiles fájl, amit meg kell jeleníteni
@@ -33,7 +33,7 @@ class MyMapWidget extends StatefulWidget {
 }
 
 class _MyMapWidgetState extends State<MyMapWidget> {
-  Future<VectorTileLayer?>? _layerFuture;
+  Future<vmt.VectorTileLayer?>? _layerFuture;
 
   @override
   void initState() {
@@ -43,13 +43,15 @@ class _MyMapWidgetState extends State<MyMapWidget> {
 
   /// Betölti az EGYEDI (async) témát és a PMTiles réteget.
   /// Hiba esetén null-t ad, amit a FutureBuilder lekezel.
-  Future<VectorTileLayer?> _loadLayer() async {
+  Future<vmt.VectorTileLayer?> _loadLayer() async {
     try {
-      final vtr.Theme theme = widget.night
-          ? await createNightTheme()
-          : await createDayTheme();
+      final vtr.Theme theme =
+          widget.night ? await createNightTheme() : await createDayTheme();
 
-      return await pmtilesLayer(widget.pmtilesFile, theme: theme);
+      return await pmtilesLayer(
+        widget.pmtilesFile,
+        theme: theme,
+      );
     } catch (e) {
       // fejlesztői log
       debugPrint('Térképréteg betöltési hiba: $e');
@@ -59,7 +61,7 @@ class _MyMapWidgetState extends State<MyMapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<VectorTileLayer?>(
+    return FutureBuilder<vmt.VectorTileLayer?>(
       future: _layerFuture,
       builder: (context, snap) {
         // 1) Betöltés alatt
@@ -69,16 +71,15 @@ class _MyMapWidgetState extends State<MyMapWidget> {
 
         // 2) Hiba vagy nincs réteg
         if (snap.hasError || !snap.hasData || snap.data == null) {
-          return Center(
+          return const Center(
             child: Text(
-              'Hiba történt 😕\nA térképréteg nem tölthető be.',
+              'Hiba történt 🙁\nA térképréteg nem tölthető be.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
             ),
           );
         }
 
-        // 3) Minden oké — kirakjuk a térképet
+        // 3) Minden oké – kirakjuk a térképet
         final layer = snap.data!;
         return FlutterMap(
           options: MapOptions(
@@ -86,7 +87,7 @@ class _MyMapWidgetState extends State<MyMapWidget> {
             initialZoom: widget.initialZoom,
           ),
           children: [
-            layer, // a vektor csempe-réteg
+            layer as Widget, // a vektor csempe-réteg
           ],
         );
       },
