@@ -31,7 +31,7 @@ dependencies:
   flutter_background_service: ^5.1.0
   flutter_background_service_android: ^6.0.0
   flutter_local_notifications: ^17.2.2
-  workmanager: ^0.5.1-dev.7
+  workmanager: ^0.5.x
 
 dev_dependencies:
   flutter_test:
