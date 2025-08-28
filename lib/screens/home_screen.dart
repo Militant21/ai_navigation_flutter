@@ -204,8 +204,9 @@ void initState() {
   // ----- UI -----
   @override
   Widget build(BuildContext context) {
-    final layerFut = (_pmtiles != null && _theme != null) ? pmtilesLayer(_pmtiles!, _theme!) : null;
-
+    final layerFut = (_pmtiles != null && _theme != null)
+    ? pmtilesLayer(_pmtiles!, theme: _theme!)
+    : null;
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Navigation'),
