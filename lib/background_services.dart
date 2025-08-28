@@ -1,14 +1,10 @@
 // lib/background_services.dart
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter/services.dart' show DartPluginRegistrant;
-
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
-
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Közös noti-plugin
@@ -27,20 +23,20 @@ Future<void> initLocalNotifications() async {
     importance: Importance.low,
   );
 
-  final android = _flnp
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+  final android = _flnp.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>();
   await android?.createNotificationChannel(channel);
 }
 
 /// BACKGROUND entrypoint – kötelező a pragma!
 @pragma('vm:entry-point')
 Future<void> onStart(ServiceInstance service) async {
-  // Szükséges, hogy a pluginok a background izolátban is elérhetők legyenek
+  // biztosítjuk, hogy a pluginok a background izolátumban is elérhetők legyenek
   DartPluginRegistrant.ensureInitialized();
 
   // Foreground mód beállítása Androidon
   if (service is AndroidServiceInstance) {
+    await service.setAsForegroundService();
     await service.setForegroundNotificationInfo(
       title: 'AI Nav fut',
       content: 'Háttérszolgáltatás aktív',
@@ -72,7 +68,7 @@ Future<void> onStart(ServiceInstance service) async {
     ),
   );
 
-  // Engedélykérés minta (UI-ból érdemes kezelni)
+  // Engedélykérés minta
   var perm = await Geolocator.checkPermission();
   if (perm == LocationPermission.denied ||
       perm == LocationPermission.deniedForever) {
@@ -90,7 +86,7 @@ Future<void> onStart(ServiceInstance service) async {
         1000,
         'Háttér fut',
         'Lat: ${pos.latitude.toStringAsFixed(5)}, '
-            'Lon: ${pos.longitude.toStringAsFixed(5)}',
+        'Lon: ${pos.longitude.toStringAsFixed(5)}',
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'bg_channel',
@@ -104,9 +100,8 @@ Future<void> onStart(ServiceInstance service) async {
       );
 
       // TODO: ide küldheted a pozíciót szerverre / adatbázisba
-
     } catch (_) {
-      // TODO: retry / log, ha kell
+      // TODO: retry / log
     }
   });
 }
@@ -114,7 +109,6 @@ Future<void> onStart(ServiceInstance service) async {
 /// Konfigurálás + indítás (Android+iOS)
 Future<void> startBackgroundService() async {
   final service = FlutterBackgroundService();
-
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
@@ -130,7 +124,6 @@ Future<void> startBackgroundService() async {
       onBackground: (_) async => true,
     ),
   );
-
   await service.startService();
 }
 
