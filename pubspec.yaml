@@ -14,6 +14,7 @@ dependencies:
   flutter_map: ^6.2.1
   vector_map_tiles: ^7.0.0
   vector_map_tiles_pmtiles: ^1.1.0   # <- EZ a jó csomagnév
+  vector_tile_renderer: ^6.0.1   # <- ezen biztosan elérhető a createDefaultTheme() 
   latlong2: ^0.9.1
   background_downloader: ^9.2.3
   path_provider: ^2.1.4
