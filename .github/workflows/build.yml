@@ -34,9 +34,17 @@ jobs:
           cache: true
 
       - name: Ensure Android folder (safe)
+        shell: bash
         run: |
-          [ -d android ] || flutter create --platforms=android --no-pub .
-
+          set -e
+          if [ ! -d android ] || [ ! -f android/gradlew ]; then
+            echo "Recreating Android platform (missing or incomplete)..."
+            rm -rf android
+            flutter create --platforms=android --no-pub --overwrite .
+          else
+            echo "Android folder and gradlew present."
+          fi
+          
       - name: Git cleanup for pub git deps (strong)
         run: |
           set -e
