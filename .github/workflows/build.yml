@@ -1,12 +1,6 @@
 name: Flutter APK CI
 
 on:
-  # Fussa automatikusan a lock workflow után
-  workflow_run:
-    workflows: ["Flutter pub lock CI"]
-    types: [completed]
-
-  # Maradjon push és kézi indítás is
   push:
     paths-ignore:
       - "**/*.md"
@@ -14,39 +8,30 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
-  contents: read
+  contents: write
 
 jobs:
   build:
-    # Csak akkor építsen, ha a lock sikeres volt (ha onnan jöttünk)
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: actions/setup-java@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Flutter (stable 3.35.2)
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: '3.35.2'
           cache: true
-
-      # Lock workflow-ból jövő pubspec.lock átvétele (ha van)
-      - name: Download pubspec.lock from lock workflow
-        if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: pubspec-lock
-          run-id: ${{ github.event.workflow_run.id }}
-        continue-on-error: true
 
       - name: Ensure Android folder (safe)
         run: |
@@ -54,7 +39,6 @@ jobs:
 
       - name: Git cleanup for pub git deps (strong)
         run: |
-          set -e
           git config --global --unset-all "http.https://github.com.extraheader" || true
           git config --global --unset-all "http.https://github.com.insteadof" || true
 
@@ -87,16 +71,19 @@ jobs:
         run: |
           set -e
           echo "🔎 Scanning pub-cache for legacy Android v1 plugins (real code only, warn-only)"
-          ROOT="$HOME/.pub-cache"
-          hits=$(grep -RIl \
-            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-            -e 'registerWith\(.*PluginRegistry' \
-            "$ROOT/hosted/pub.dev" \
-            | grep -E '/android/src/main/.*\.(java|kt)$' \
-            | grep -Ev '/(example|examples|test|androidTest)/' || true)
+          ROOT="$HOME/.pub-cache/hosted/pub.dev"
+          if [ -d "$ROOT" ]; then
+            hits=$(grep -RIl --include='*.kt' --include='*.java' \
+              -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+              -e 'registerWith\s*\(' \
+              "$ROOT" 2>/dev/null | grep -Ev '/(example|examples|test|androidTest)/' || true)
+          else
+            hits=""
+          fi
           if [ -n "$hits" ]; then
-            echo "⚠️ Legacy v1 plugin shims detected (warning only):"
+            echo "⚠️  Legacy v1 plugin shims detected (warning only):"
             echo "$hits" | sed 's#^#  - #'
+            true
           else
             echo "✅ No legacy v1 plugin implementations found."
           fi
@@ -104,6 +91,14 @@ jobs:
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
           flutter build apk --debug \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk          flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
