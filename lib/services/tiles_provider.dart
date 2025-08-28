@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 // lib/services/tiles_provider.dart
-// PMTiles -> VectorTileLayer. HELYES API: konstruktor, NINCS fromFile, NINCS await a provideren.
+//
+// PMTiles → VectorTileLayer provider (csak PMTiles, MBTiles nélkül)
 
 import 'dart:io';
 
@@ -8,22 +8,28 @@ import 'package:vector_map_tiles/vector_map_tiles.dart';
 import 'package:vector_map_tiles_pmtiles/vector_map_tiles_pmtiles.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 
-/// PMTiles fájlból vektor csemperéteg készítése.
-/// [pmtileFile] - a .pmtiles fájl
-/// [theme]       - vtr.Theme (createDayTheme/createNightTheme eredménye)
-Future<VectorTileLayer> pmtilesLayer(File pmtileFile, vtr.Theme theme) async {
+/// Gyors téma helper — ha nincs külön téma, ad egy semleges világosat.
+vtr.Theme defaultMapTheme() => vtr.createDefaultTheme();
+
+/// PMTiles fájlból VectorTileLayer készítése.
+/// [pmtileFile] a .pmtiles fájlod (pl. assets-ből kimásolva egy írásos mappába).
+/// [theme] opcionális; ha nem adsz, `defaultMapTheme()` lesz.
+Future<VectorTileLayer> pmtilesLayer(
+  File pmtileFile, {
+  vtr.Theme? theme,
+}) async {
   if (!await pmtileFile.exists()) {
-    throw StateError('PMTiles file not found: ${pmtileFile.path}');
+    throw StateError('PMTiles file nem található: ${pmtileFile.path}');
   }
 
-  // Helyes provider példányosítás (konstruktor, nem fromFile)
-  final prov = await PmTilesVectorTileProvider.fromSource(
-  pmtileFile.path,
-);
-// A Protomaps témák a 'protomaps' forrásnévre számítanak.
+  // Helyes provider példányosítás PMTiles-hez:
+  final prov = await PmTilesVectorTileProvider.fromSource(pmtileFile.path);
+
+  // A Protomaps témák a 'protomaps' forrásnévre számítanak.
   return VectorTileLayer(
-    theme: theme,
-    tileProviders: TileProviders({'protomaps': prov}),
+    theme: theme ?? defaultMapTheme(),
+    tileProviders: TileProviders({
+      'protomaps': prov,
+    }),
   );
 }
-
