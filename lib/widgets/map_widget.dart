@@ -49,7 +49,7 @@ class _MyMapWidgetState extends State<MyMapWidget> {
           ? await createNightTheme()
           : await createDayTheme();
 
-      return await pmtilesLayer(widget.pmtilesFile, theme);
+      return await pmtilesLayer(widget.pmtilesFile, theme: theme);
     } catch (e) {
       // fejlesztői log
       debugPrint('Térképréteg betöltési hiba: $e');
