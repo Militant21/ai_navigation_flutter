@@ -13,7 +13,7 @@ dependencies:
   # meglévők – maradhatnak
   flutter_map: ^6.2.1
   vector_map_tiles: ^7.0.0
-  vector_map_tiles_mbtiles: ^1.1.0   # <- EZ a jó csomagnév
+  vector_map_tiles_pmtiles: ^1.1.0   # <- EZ a jó csomagnév
   latlong2: ^0.9.1
   background_downloader: ^9.2.3
   path_provider: ^2.1.4
@@ -49,6 +49,7 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
+    - assets/maps/
 
 # --- Splash beállítás ---
 flutter_native_splash:
