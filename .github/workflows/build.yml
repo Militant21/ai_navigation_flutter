@@ -13,32 +13,30 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Flutter (stable 3.35.2)
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: '3.35.2'
           cache: true
 
+      # Ha nincs android mappa a repo-ban, generáljuk – később kitakarítjuk belőle a V1 maradékot
       - name: Ensure Android folder (safe)
         run: |
           [ -d android ] || flutter create --platforms=android --no-pub .
 
       - name: Git cleanup for pub git deps (strong)
         run: |
+          set -e
           git config --global --unset-all "http.https://github.com.extraheader" || true
           git config --global --unset-all "http.https://github.com.insteadof" || true
 
@@ -66,22 +64,36 @@ jobs:
             echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
           fi
 
+      # --- Itt a lényeg: automata fix a V1-es beágyazás maradékára ---
+      - name: Fix legacy V1 ApplicationName in manifests
+        shell: bash
+        run: |
+          set -e
+          for f in android/app/src/**/AndroidManifest.xml; do
+            [ -f "$f" ] || continue
+            # töröljük az android:name="${applicationName}" attribútumot (és az előtte lévő szóközt)
+            sed -i 's/\s*android:name="${applicationName}"//g' "$f"
+          done
+          echo "After fix, checking for v1 traces..."
+          ! grep -Rni 'applicationName' android/app/src || (echo "applicationName still present" && exit 1)
+          ! grep -Rni 'FlutterApplication' android/app/src || (echo "FlutterApplication still present" && exit 1)
+          ! grep -Rni 'io\.flutter\.app' android/app/src || (echo "io.flutter.app still present" && exit 1)
+
+      # Opcionális, csak figyelmeztet: 3rd party v1 plugin shim-ek
       - name: Detect legacy Android v1 plugins (warn-only)
         shell: bash
         run: |
           set -e
           echo "🔎 Scanning pub-cache for legacy Android v1 plugins (real code only, warn-only)"
-          ROOT="$HOME/.pub-cache/hosted/pub.dev"
-          if [ -d "$ROOT" ]; then
-            hits=$(grep -RIl --include='*.kt' --include='*.java' \
-              -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-              -e 'registerWith\s*\(' \
-              "$ROOT" 2>/dev/null | grep -Ev '/(example|examples|test|androidTest)/' || true)
-          else
-            hits=""
-          fi
+          ROOT="$HOME/.pub-cache"
+          hits=$(grep -RIl \
+            -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
+            -e 'registerWith\(.*PluginRegistry' \
+            "$ROOT/hosted/pub.dev" \
+            | grep -E '/android/src/main/.*\.(java|kt)$' \
+            | grep -Ev '/(example|examples|test|androidTest)/' || true)
           if [ -n "$hits" ]; then
-            echo "⚠️  Legacy v1 plugin shims detected (warning only):"
+            echo "⚠️ Legacy v1 plugin shims detected (warning only):"
             echo "$hits" | sed 's#^#  - #'
             true
           else
@@ -94,16 +106,7 @@ jobs:
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk          flutter build apk --debug \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
-
       - uses: actions/upload-artifact@v4
         with:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
-
