@@ -1,85 +1,91 @@
-// lib/background_service.dart
+// lib/background_services.dart
 import 'dart:async';
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter_background_service/android.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:geolocator/geolocator.dart';
+import 'dart:isolate';
+
 import 'package:flutter/widgets.dart';
+import 'package:geolocator/geolocator.dart';
 
-final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+/// Közös noti-plugin
+final FlutterLocalNotificationsPlugin _flnp = FlutterLocalNotificationsPlugin();
+
+/// Lokális értesítések init + Android csatorna
 Future<void> initLocalNotifications() async {
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const init = InitializationSettings(android: androidInit);
-  await flutterLocalNotificationsPlugin.initialize(init);
+  await _flnp.initialize(init);
 
-  // Android csatorna – egyszer elég
-  const androidChannel = AndroidNotificationChannel(
+  const channel = AndroidNotificationChannel(
     'bg_channel',
     'Background Service',
     description: 'Persistent notification for background tasks',
     importance: Importance.low,
   );
-  final androidPlugin = flutterLocalNotificationsPlugin
+
+  final android = _flnp
       .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
-  await androidPlugin?.createNotificationChannel(androidChannel);
+  await android?.createNotificationChannel(channel);
 }
 
-Future<void> initBackgroundService() async {
-  await FlutterBackgroundService.initialize(_onStart);
-}
-
+/// BACKGROUND entrypoint – kötelező a pragma!
 @pragma('vm:entry-point')
-void _onStart(ServiceInstance service) async {
-  // Kötelező V2: biztosítsuk, hogy a pluginek be legyenek regisztrálva
+Future<void> onStart(ServiceInstance service) async {
+  // Szükséges, hogy a pluginok a background izolátban is elérhetők legyenek
   DartPluginRegistrant.ensureInitialized();
 
+  // Foreground mód beállítása Androidon
   if (service is AndroidServiceInstance) {
-    // Állandó értesítés – foreground módban
-    service.setAsForegroundService();
-
-    await flutterLocalNotificationsPlugin.show(
-      1000,
-      'Háttér fut',
-      'Helyadatok rögzítése…',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'bg_channel',
-          'Background Service',
-          ongoing: true,
-          priority: Priority.low,
-          importance: Importance.low,
-          icon: '@mipmap/ic_launcher',
-        ),
-      ),
+    await service.setForegroundNotificationInfo(
+      title: 'AI Nav fut',
+      content: 'Háttérszolgáltatás aktív',
     );
   }
 
-  // Engedélyek (egyszerű minta – UI-ban is kérheted)
-  var perm = await Geolocator.checkPermission();
-  if (perm == LocationPermission.denied ||
-      perm == LocationPermission.deniedForever) {
-    perm = await Geolocator.requestPermission();
-  }
-
-  // Stop parancs kezelése
-  service.on('stop').listen((_) async {
-    await flutterLocalNotificationsPlugin.cancel(1000);
+  // Stop parancs
+  service.on('stopService').listen((_) async {
     if (service is AndroidServiceInstance) {
       await service.setAsBackgroundService();
     }
     await service.stopSelf();
   });
 
-  // Példa: 30 másodpercenként helylekérés + értesítés frissítés
+  // Egyszeri noti induláskor
+  await _flnp.show(
+    1000,
+    'Háttér fut',
+    'Helyadatok rögzítése…',
+    const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'bg_channel',
+        'Background Service',
+        ongoing: true,
+        priority: Priority.low,
+        importance: Importance.low,
+        icon: '@mipmap/ic_launcher',
+      ),
+    ),
+  );
+
+  // Engedélykérés minta (UI-ból érdemes kezelni)
+  var perm = await Geolocator.checkPermission();
+  if (perm == LocationPermission.denied ||
+      perm == LocationPermission.deniedForever) {
+    perm = await Geolocator.requestPermission();
+  }
+
+  // Időzített példa: 30 mp-enként pozíció + noti frissítés
   Timer.periodic(const Duration(seconds: 30), (_) async {
     try {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      await flutterLocalNotificationsPlugin.show(
+      await _flnp.show(
         1000,
         'Háttér fut',
         'Lat: ${pos.latitude.toStringAsFixed(5)}, '
@@ -96,10 +102,39 @@ void _onStart(ServiceInstance service) async {
         ),
       );
 
-      // TODO: itt mentheted / küldheted a helyadatot ahová kell
+      // TODO: ide küldheted a pozíciót szerverre / adatbázisba
 
     } catch (_) {
-      // nyeld le – itt lehet retry/log
+      // TODO: retry / log, ha kell
     }
   });
+}
+
+/// Konfigurálás + indítás (Android+iOS)
+Future<void> startBackgroundService() async {
+  final service = FlutterBackgroundService();
+
+  await service.configure(
+    androidConfiguration: AndroidConfiguration(
+      onStart: onStart,
+      autoStart: true,
+      isForegroundMode: true,
+      notificationChannelId: 'bg_channel',
+      initialNotificationTitle: 'AI Nav',
+      initialNotificationContent: 'Szolgáltatás indul…',
+      foregroundServiceNotificationId: 999,
+    ),
+    iosConfiguration: IosConfiguration(
+      onForeground: onStart,
+      onBackground: (_) async => true,
+    ),
+  );
+
+  await service.startService();
+}
+
+/// Opcionális leállítás gombhoz
+Future<void> stopBackgroundService() async {
+  final service = FlutterBackgroundService();
+  service.invoke('stopService');
 }
