@@ -1,6 +1,7 @@
 // lib/background_services.dart
 import 'dart:async';
 import 'dart:isolate';
+import 'package:flutter/services.dart' show DartPluginRegistrant;
 
 import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
