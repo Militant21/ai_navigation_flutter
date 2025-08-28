@@ -103,7 +103,7 @@ jobs:
           else
             echo "No legacy v1 plugin implementations found."
           fi
-- name: Pre-merge manifest (debug) and dump it
+      - name: Pre-merge manifest (debug) and dump it
         shell: bash
         run: |
           set -e
