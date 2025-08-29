@@ -50,7 +50,7 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
-    - assets/maps/
+    #--++terkepek helye lesz++- assets/maps/
 
 # --- Splash beállítás ---
 flutter_native_splash:
