@@ -95,6 +95,12 @@ jobs:
             echo "No legacy v1 plugin implementations found."
           fi
 
+      - name: Preload local Gradle distribution
+        run: |
+           mkdir -p android/gradle/wrapper/gradle
+           curl -L https://services.gradle.org/distributions/gradle-8.7-all.zip \
+           -o android/gradle/wrapper/gradle/gradle-8.7-all.zip
+
       # 11) DIAGNOSZTIKA: tényleg bent van-e a Flutter embedding a classpathon?
       - name: Gradle deps (check Flutter embedding)
         shell: bash
