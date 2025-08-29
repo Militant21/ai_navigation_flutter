@@ -2,7 +2,7 @@ plugins {
     id("com.android.application") version "8.6.0"
     id("org.jetbrains.kotlin.android") version "2.0.20"
     // A Flutter Gradle plugin verziót NEM adjuk meg: a settings.gradle.kts-ből jön
-    id("dev.flutter.flutter-gradle-plugin")
+    id("dev.flutter.flutter-plugin")
 }
 
 android {
