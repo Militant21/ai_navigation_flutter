@@ -53,9 +53,6 @@ jobs:
       - name: Force debug signing for release (dev only)
         run: bash ci/force_debug_release.sh
 
-      - name: Resolve packages (again)
-        run: flutter pub get
-
       - name: Generate launcher icons if asset present
         shell: bash
         run: |
