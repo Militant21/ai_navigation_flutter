@@ -52,5 +52,5 @@ dependencies {
 
 flutter {
     // a Flutter projekt gyökere
-    source = "../../.."
+    source = "../../"
 }
