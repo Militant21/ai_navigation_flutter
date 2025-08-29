@@ -20,18 +20,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
       - name: Set up Flutter
+        id: flutter_setup
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
-          flutter-version: "3.35.2"
-          cache: true
+         channel: stable
+         flutter-version: "3.35.2"
+         cache: true
+
+      - name: Write local.properties (ensure flutter.sdk)
+        run: |
+         echo "flutter.sdk=${{ steps.flutter_setup.outputs.flutter-path }}" > android/local.properties
+         cat android/local.properties
           
       - name: Write local.properties (ensure flutter.sdk)
         run: |
