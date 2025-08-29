@@ -4,11 +4,14 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    plugins {
+        id("com.android.application") version "8.6.0"
+        id("org.jetbrains.kotlin.android") version "2.0.20"
+    }
 }
 
 dependencyResolutionManagement {
-    // A projekt repóit részesítsük előnyben, hogy a Flutter plugin által
-    // hozzáadott repók is érvényesüljenek.
+    // A projekt repóit részesítsük előnyben, hogy a Flutter plugin által hozzáadott repók is érvényesüljenek
     repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
         google()
@@ -25,10 +28,9 @@ if (lp.exists()) {
 
 val flutterSdk: String? = props.getProperty("flutter.sdk") ?: System.getenv("FLUTTER_ROOT")
 if (flutterSdk != null) {
-    // Ezzel lesz elérhető a dev.flutter.flutter-gradle-plugin és az engine AAR-ok
     includeBuild("$flutterSdk/packages/flutter_tools/gradle")
 } else {
-    logger.warn("⚠  A 'flutter.sdk' nincs beállítva (android/local.properties vagy FLUTTER_ROOT).")
+    logger.warn("⚠️ A 'flutter.sdk' nincs beállítva (android/local.properties vagy FLUTTER_ROOT).")
 }
 
 rootProject.name = "ai_navigation_flutter"
