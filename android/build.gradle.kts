@@ -1,38 +1,13 @@
-plugins {
-    id("com.android.application") version "8.5.2"
-    id("org.jetbrains.kotlin.android") version "1.9.24"
-    // verzió NINCS – ezt a settings.gradle.kts-ben bekötött Flutter SDK adja
-    id("dev.flutter.flutter-gradle-plugin")
+import org.gradle.api.file.Directory
+
+val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
+
+subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 
-android {
-    namespace = "com.example.ai_navigation_flutter"
-    compileSdk = 34
-
-    defaultConfig {
-        applicationId = "com.example.ai_navigation_flutter"
-        minSdk = 21
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true
-    }
-    kotlinOptions { jvmTarget = JavaVersion.VERSION_17.toString() }
-
-    buildTypes {
-        release { isMinifyEnabled = false }
-    }
-}
-
-dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-}
-
-flutter {
-    source = "../../"
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
 }
