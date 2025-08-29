@@ -102,6 +102,14 @@ jobs:
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+  
+      # .github/workflows/build.yml egy lépése lehet
+      - name: Build RELEASE APK (minify + shrink)
+        run: |
+         flutter build apk --release \
+             --build-number="${GITHUB_RUN_NUMBER}" \
+             --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+
 
       # Maradhat az ellenőrzés: V2-only merged manifest
       - name: Verify merged manifest is V2-only
