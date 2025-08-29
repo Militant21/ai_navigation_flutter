@@ -1,6 +1,25 @@
-plugins {
-    id("dev.flutter.flutter-plugin-loader")
-    id("com.android.application") apply false
-    id("com.android.library") apply false
-    id("org.jetbrains.kotlin.android") apply false
+// android/build.gradle.kts
+
+import org.gradle.api.file.Directory
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// (opcionális) a build mappa feljebb mozgatása, hogy a repo gyökerében legyen
+val newBuildDir: Directory =
+    rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
+
+subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
 }
