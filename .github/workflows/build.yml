@@ -108,6 +108,13 @@ jobs:
           cd android
           ./gradlew :app:dependencies --configuration debugCompileClasspath || true
 
+      - name: Debug Gradle environment
+        run: |
+           ./gradlew -q :app:tasks --all | grep -i flutter || true
+           ./gradlew :app:dependencies --configuration debugCompileClasspath || true
+           ./gradlew :app:buildEnvironment || true
+           cat android/local.properties || true
+
       # 12) DEBUG build (dev-friendly signing)
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
