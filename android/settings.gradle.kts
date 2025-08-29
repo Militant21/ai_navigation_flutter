@@ -16,7 +16,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-    }
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }  // ← EZ HIÁNYZIK
+      }
 }
 
 // --- Flutter SDK útvonal beolvasása és a Gradle plugin bekötése ---
