@@ -32,8 +32,12 @@ jobs:
           channel: stable
           flutter-version: "3.35.2"
           cache: true
-
-      # Gyorsítás: Gradle cache
+          
+      - name: Write local.properties (ensure flutter.sdk)
+        run: |
+         FLUTTER_SDK_PATH="$(flutter sdk-path)"
+         echo "flutter.sdk=$FLUTTER_SDK_PATH" > android/local.properties
+         # Gyorsítás: Gradle cache
       - name: Cache Gradle
         uses: gradle/gradle-build-action@v2
 
