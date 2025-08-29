@@ -1,15 +1,7 @@
-// android/build.gradle.kts
+// android/build.gradle.kts  (ROOT)
 
 import org.gradle.api.file.Directory
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-// (opcionális) a build mappa feljebb mozgatása, hogy a repo gyökerében legyen
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
