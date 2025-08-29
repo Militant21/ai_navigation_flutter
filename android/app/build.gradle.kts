@@ -1,7 +1,7 @@
 plugins {
-    id("com.android.application") version "8.5.2"
-    id("org.jetbrains.kotlin.android") version "1.9.24"
-    // A Flutter Gradle plugin verziót NEM adjuk meg, az includeBuild-ből jön (settings.gradle.kts)
+    id("com.android.application") version "8.6.0"
+    id("org.jetbrains.kotlin.android") version "2.0.20"
+    // A Flutter Gradle plugin verziót NEM adjuk meg: a settings.gradle.kts-ből jön
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.ai_navigation_flutter"
-        minSdk = 24   // minimum 24 legyen (CI elvárásod alapján)
+        minSdk = 21
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -28,13 +28,12 @@ android {
     }
 
     buildTypes {
-        // DEBUG build: nincs minify/shrink → gyors fejlesztés, nincs hibád
+        // Debug: gyors, nincs shrink/minify
         debug {
             isMinifyEnabled = false
             isShrinkResources = false
         }
-
-        // RELEASE build: minify + shrink → kisebb APK
+        // Release: karcsúsított APK (minify + shrink)
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -42,17 +41,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // ideiglenesen használhatod a debug keystore-t is, ha nincs saját
-            // signingConfig = signingConfigs.getByName("debug")
         }
     }
 }
 
 dependencies {
+    // Java 8+ API-k desugarolása
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
 
 flutter {
-    // Flutter projekt gyökér (repo root) – a szokásos elrendezéshez
+    // a Flutter projekt gyökere
     source = "../../.."
 }
