@@ -1,4 +1,5 @@
-// android/settings.gradle.kts
+import java.io.FileInputStream
+import java.util.Properties
 
 pluginManagement {
     repositories {
@@ -6,26 +7,27 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
-}
 
-// Flutter SDK helye: FLUTTER_ROOT env vagy local.properties
-val props = java.util.Properties()
-val lp = file("local.properties")
-if (lp.exists()) {
-    val fis = java.io.FileInputStream(lp)
-    try {
-        props.load(fis)
-    } finally {
-        fis.close()
+    // Flutter SDK beemelése a lokalból
+    val props = Properties()
+    val lp = file("local.properties")
+    if (lp.exists()) {
+        FileInputStream(lp).use { props.load(it) }
+    }
+    val flutterSdk: String? = props.getProperty("flutter.sdk")
+    if (flutterSdk != null) {
+        includeBuild("$flutterSdk/packages/flutter_tools/gradle")
+    } else {
+        logger.warn("⚠ 'flutter.sdk' nincs beállítva az android/local.properties-ben.")
     }
 }
 
-val flutterSdk: String? = System.getenv("FLUTTER_ROOT") ?: props.getProperty("flutter.sdk")
-
-if (flutterSdk != null) {
-    includeBuild("$flutterSdk/packages/flutter_tools/gradle")
-} else {
-    logger.warn("'flutter.sdk' nincs beállítva (FLUTTER_ROOT/local.properties).")
+// Itt KELL rögzíteni a plugin verziókat
+plugins {
+    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
+    id("com.android.application") version "8.1.4" apply false
+    id("com.android.library") version "8.1.4" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
 }
 
 dependencyResolutionManagement {
