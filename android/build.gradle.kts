@@ -1,5 +1,6 @@
 import org.gradle.api.file.Directory
 
+// Build mappa egységesítése az Android modulok alatt
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 
