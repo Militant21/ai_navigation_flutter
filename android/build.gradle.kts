@@ -1,8 +1,6 @@
-// android/build.gradle.kts (root, NEM az app modul)
-
 plugins {
-    // Csak verzió-deklarációk a gyökérben; az app modulban lesznek alkalmazva
-    id("com.android.application") version "8.2.1" apply false
+    id("com.android.application") version "8.9.1" apply false
+    id("com.android.library") version "8.9.1" apply false
     id("org.jetbrains.kotlin.android") version "1.9.24" apply false
 }
 
@@ -13,8 +11,15 @@ allprojects {
     }
 }
 
-// Opcionális: CI-hoz nem muszáj a buildDir-átirányítás; elhagyható.
-// Ha szeretnéd megtartani, maradhat a korábbi "build/" áthelyezős rész.
+val newBuildDir: Directory =
+    rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
+
+subprojects {
+    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    project.evaluationDependsOn(":app")
+}
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
