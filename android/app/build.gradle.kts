@@ -1,52 +1,38 @@
-// android/app/build.gradle.kts
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("com.android.application") version "8.5.2"
+    id("org.jetbrains.kotlin.android") version "1.9.24"
+    // verzió NINCS – ezt a settings.gradle.kts-ben bekötött Flutter SDK adja
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.example.ai_navigation_flutter"
+    compileSdk = 34
 
-    // A Flutter plugin adja ezeket a változókat
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    defaultConfig {
+        applicationId = "com.example.ai_navigation_flutter"
+        minSdk = 21
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // flutter_local_notifications miatt
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
-    defaultConfig {
-        applicationId = "com.example.ai_navigation_flutter"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-    }
+    kotlinOptions { jvmTarget = JavaVersion.VERSION_17.toString() }
 
     buildTypes {
-        release {
-            // CI-hez „debug” kulccsal írunk alá
-            signingConfig = signingConfigs.getByName("debug")
-        }
+        release { isMinifyEnabled = false }
     }
 }
 
-// Modulfüggőségek
 dependencies {
-    // JDK8+ API-k desugar-olása
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
 
-// A Flutter modul helye
 flutter {
-    source = "../.."
+    source = "../../"
 }
-
-// FONTOS: NINCS repositories blokk itt!
