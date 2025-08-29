@@ -42,7 +42,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.1
 
-#flutter:
+flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
@@ -53,19 +53,19 @@ dev_dependencies:
     #--++terkepek helye lesz++- assets/maps/
 
 # --- Splash beállítás ---
-#flutter_native_splash:
-  #android: true
+flutter_native_splash:
+  android: true
  # ios: true
-  #image: assets/icon/icon.png
- # color: "#ffffff"
+  image: assets/icon/icon.png
+  color: "#ffffff"
 
 # --- Launcher ikon beállítás ---
-#flutter_launcher_icons:
- # android: "ic_launcher"
+flutter_launcher_icons:
+  android: "ic_launcher"
  # ios: true
-  #image_path: assets/icon/icon.png
- # min_sdk_android: 21
- # remove_alpha_ios: true
+  image_path: assets/icon/icon.png
+  min_sdk_android: 21
+  remove_alpha_ios: true
 
 dependency_overrides:
   vector_tile_renderer: "5.2.1"
