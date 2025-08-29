@@ -15,44 +15,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) Forrás lehúzása
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
+      # 2) Flutter környezet
       - name: Set up Flutter
         id: flutter_setup
         uses: subosito/flutter-action@v2
         with:
-         channel: stable
-         flutter-version: "3.35.2"
-         cache: true
+          channel: stable
+          flutter-version: "3.35.2"
+          cache: true
 
-      - name: Write local.properties (ensure flutter.sdk)
+      # 3) Egyetlen forrásból írjuk a local.properties-t
+      - name: Write local.properties (single source of truth)
         run: |
-         echo "flutter.sdk=${{ steps.flutter_setup.outputs.flutter-path }}" > android/local.properties
-         cat android/local.properties
-          
-      - name: Write local.properties (ensure flutter.sdk)
-        run: |
-         echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties  
+          echo "flutter.sdk=${FLUTTER_ROOT}" > android/local.properties
+          echo "=== android/local.properties ==="
+          cat android/local.properties
+
+      # 4) Gradle cache
       - name: Cache Gradle
         uses: gradle/gradle-build-action@v2
 
-      # Git-es pub dependency tisztítás (maradhat)
+      # 5) Git cleanup pub git deps (maradhat)
       - name: Git cleanup for pub git deps (strong)
         run: |
           set -e
-          git config --global --unset-all "http.https://github.com.extraheader" || true
+          git config --global --unset-all "http.https://github.com.extrah eader" || true
           git config --global --unset-all "http.https://github.com.insteadof" || true
 
+      # 6) Pub csomagok
       - name: Resolve packages
         run: flutter pub get
 
-      # (opcionális) dev-barát release signing script – ha kell neked
+      # 7) (opcionális) dev-barát release signing script
       - name: Force debug signing for release (dev only)
         run: bash ci/force_debug_release.sh
 
+      # 8) (opcionális) ikon generálás, csak ha van kép
       - name: Generate launcher icons if asset present
         shell: bash
         run: |
@@ -62,27 +66,28 @@ jobs:
             echo "assets/icon/icon.png not found, skipping launcher icon generation."
           fi
 
+      # 9) (opcionális) splash generálás, ha konfigurálva
       - name: Generate native splash (if configured)
         shell: bash
         run: |
-          if grep -q '^ *flutter_native_splash:' pubspec.yaml; then
+          if grep -q '^[[:space:]]*flutter_native_splash:' pubspec.yaml; then
             flutter pub run flutter_native_splash:create
           else
             echo "No flutter_native_splash config in pubspec, skipping splash."
           fi
 
-      # --- Ezek a V1-detektor lépések maradhatnak (warn-only) ---
+      # 10) Régi V1 plugin implementációk detektálása (warn only)
       - name: Detect legacy V1 Android UI plugins (warn-only)
         shell: bash
         run: |
           set -e
           ROOT="$HOME/.pub-cache"
-          hits=$(grep -RIl \
+          hits="$(grep -RIl \
             -e 'io\.flutter\.plugin\.common\.PluginRegistry' \
-            -e 'registerWith.*PluginRegistry' \
+            -e 'registerWith\(PluginRegistry' \
             "$ROOT/hosted/pub.dev" \
-            | grep -E '/android/src/main/.*\.(java|kt)$' \
-            | grep -Ev '(example|examples|test|androidTest)/' || true)
+            | grep -E '/android/src/main/.+\.(java|kt)$' \
+            | grep -Ev '(example|examples|test|androidTest)' || true)"
           if [ -n "$hits" ]; then
             echo "Legacy v1 plugin shims detected (warning only):"
             echo "$hits" | sed 's/^/ - /'
@@ -90,25 +95,28 @@ jobs:
             echo "No legacy v1 plugin implementations found."
           fi
 
-      # --- A PROBLÉMÁS lépést kivesszük! ---
-      # (Pre-merge manifest (debug) and dump it)  <-- TÖRÖLVE
+      # 11) DIAGNOSZTIKA: tényleg bent van-e a Flutter embedding a classpathon?
+      - name: Gradle deps (check Flutter embedding)
+        shell: bash
+        run: |
+          cd android
+          ./gradlew :app:dependencies --configuration debugCompileClasspath || true
 
-      # Build + a build úgyis legenerálja a merged manifestet
+      # 12) DEBUG build (dev-friendly signing)
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
           flutter build apk --debug \
             --build-number="${GITHUB_RUN_NUMBER}" \
             --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
-  
-      # .github/workflows/build.yml egy lépése lehet
+
+      # 13) RELEASE build (minify + shrink)
       - name: Build RELEASE APK (minify + shrink)
         run: |
-         flutter build apk --release \
-             --build-number="${GITHUB_RUN_NUMBER}" \
-             --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+          flutter build apk --release \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
 
-
-      # Maradhat az ellenőrzés: V2-only merged manifest
+      # 14) Ellenőrzés: merged manifest csak V2-es?
       - name: Verify merged manifest is V2-only
         shell: bash
         run: |
@@ -124,6 +132,7 @@ jobs:
           fi
           echo "Merged manifest is clean (V2-only)."
 
+      # 15) Artifact feltöltés (debug APK)
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
