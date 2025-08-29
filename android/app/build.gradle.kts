@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application") version "8.5.2"
     id("org.jetbrains.kotlin.android") version "1.9.24"
-    // verzió NINCS – ezt a settings.gradle.kts-ben bekötött Flutter SDK adja
+    // A verziót NEM adjuk meg: az includeBuild-ből jön (settings.gradle.kts)
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -22,10 +22,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlinOptions { jvmTarget = JavaVersion.VERSION_17.toString() }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
 
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = false
+        }
     }
 }
 
@@ -34,5 +39,6 @@ dependencies {
 }
 
 flutter {
-    source = "../../"
+    // Flutter projekt gyökér (repo root) – a szokásos elrendezéshez
+    source = "../../.."
 }
