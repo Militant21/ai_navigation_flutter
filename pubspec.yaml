@@ -53,19 +53,19 @@ dev_dependencies:
     #--++terkepek helye lesz++- assets/maps/
 
 # --- Splash beállítás ---
-flutter_native_splash:
-  android: true
-  ios: true
-  image: assets/icon/icon.png
-  color: "#ffffff"
+#flutter_native_splash:
+  #android: true
+ # ios: true
+  #image: assets/icon/icon.png
+ # color: "#ffffff"
 
 # --- Launcher ikon beállítás ---
-flutter_launcher_icons:
-  android: "ic_launcher"
-  ios: true
-  image_path: assets/icon/icon.png
-  min_sdk_android: 21
-  remove_alpha_ios: true
+#flutter_launcher_icons:
+ # android: "ic_launcher"
+ # ios: true
+  #image_path: assets/icon/icon.png
+ # min_sdk_android: 21
+ # remove_alpha_ios: true
 
 dependency_overrides:
   vector_tile_renderer: "5.2.1"
