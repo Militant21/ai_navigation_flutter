@@ -1,8 +1,3 @@
-// android/settings.gradle.kts
-
-import java.io.FileInputStream
-import java.util.Properties
-
 pluginManagement {
     repositories {
         google()
@@ -11,19 +6,20 @@ pluginManagement {
     }
 }
 
-val props = Properties()
+val props = java.util.Properties()
 val lp = file("local.properties")
-if (lp.exists()) FileInputStream(lp).use { props.load(it) }
-val flutterSdk: String? = props.getProperty("flutter.sdk")
-
+if (lp.exists()) {
+    lp.inputStream().use { props.load(it) }
+}
+val flutterSdk: String? = props.getProperty("flutter.sdk") ?: System.getenv("FLUTTER_ROOT")
 if (flutterSdk != null) {
     includeBuild("$flutterSdk/packages/flutter_tools/gradle")
 } else {
-    logger.warn("⚠️ 'flutter.sdk' nincs beállítva a android/local.properties-ben.")
+    logger.warn("⚠ 'flutter.sdk' nincs beállítva (android/local.properties vagy FLUTTER_ROOT).")
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS) // <- ez okozta, és jó így
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
