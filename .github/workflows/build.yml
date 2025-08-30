@@ -28,7 +28,7 @@ jobs:
         with:
           channel: stable
           flutter-version: "3.35.2"
-          cache: true
+          cache: false
 
         # 3) Egyetlen forrásból írjuk a local.properties-t
       - name: Write local.properties (single source of truth)
