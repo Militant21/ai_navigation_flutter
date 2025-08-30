@@ -141,11 +141,13 @@ jobs:
           ./gradlew :app:dependencies --configuration releaseCompileClasspath | grep -i flutter || true
      
       # 12) DEBUG build (dev-friendly signing)
-      - name: Build DEBUG APK (dev-friendly signing)
+      - name: Build DEBUG APK (with stacktrace)
         run: |
-          flutter build apk --debug --stacktrace \
-          --build-number="${GITHUB_RUN_NUMBER}" \
-          --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+          flutter build apk --debug \
+          --build-number="${GITHUB_RUN_NUMBER:-1}" \
+          --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER:-1}" \
+          -- --stacktrace
+
 
 
       # 13) RELEASE build (minify + shrink)
