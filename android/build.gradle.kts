@@ -1,5 +1,8 @@
 import org.gradle.api.file.Directory
 
+// Ne adjunk meg itt repositories-t, mert a settings-ben központosítjuk!
+
+// build/ mappa központosítása (ha kell)
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.set(newBuildDir)
 
