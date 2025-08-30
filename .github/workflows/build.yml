@@ -143,9 +143,10 @@ jobs:
       # 12) DEBUG build (dev-friendly signing)
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
-          flutter build apk --debug \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+          flutter build apk --debug --stacktrace \
+          --build-number="${GITHUB_RUN_NUMBER}" \
+          --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+
 
       # 13) RELEASE build (minify + shrink)
       - name: Build RELEASE APK (minify + shrink)
