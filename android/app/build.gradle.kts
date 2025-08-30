@@ -45,6 +45,12 @@ android {
 dependencies {
     // Java 8+ API-k desugarolása
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
 }
+
+flutter {
+    source = "../.."
+}
+
 
 // NINCS repositories blokk itt!
