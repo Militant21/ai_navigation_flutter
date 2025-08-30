@@ -21,3 +21,7 @@ pubspec.lock.json
 # Ignore backup files
 *.bak
 gradle/gradle-8.7-all.zip
+
+# Ignore local Gradle zips
+gradle/*.zip
+android/gradle/wrapper/*.zip
