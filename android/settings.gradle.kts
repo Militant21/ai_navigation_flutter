@@ -1,13 +1,30 @@
-import org.gradle.api.initialization.Settings
 import java.io.File
 import java.util.Properties
+import org.gradle.api.GradleException
 
-// --- Plugin- és függőségkezelés (ez a rész változatlan) ---
 pluginManagement {
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
+        // Flutter Maven repo (embedding/artifacts)
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+    }
+
+    // A Flutter Gradle plugin feloldása a Flutter SDK-ból (NINCS legacy "apply")
+    val localProps = File(rootDir, "local.properties")
+    val props = Properties().apply {
+        if (localProps.exists()) localProps.inputStream().use { load(it) }
+    }
+    val flutterSdk: String = props.getProperty("flutter.sdk")
+        ?: System.getenv("FLUTTER_ROOT")
+        ?: throw GradleException(
+            "Flutter SDK not found. Set flutter.sdk in android/local.properties or FLUTTER_ROOT env var."
+        )
+
+    includeBuild(File(flutterSdk, "packages/flutter_tools/gradle"))
+    plugins {
+        id("dev.flutter.flutter-gradle-plugin")
     }
 }
 
@@ -15,37 +32,11 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
+        mavenCentral()
+        // Flutter Maven repo a runtime/artifactokhoz
         maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
 }
 
 rootProject.name = "ai_navigation_flutter"
 include(":app")
-
-
-// --- A JAVÍTOTT, ROBUSTUS Flutter SDK betöltés ---
-
-// Egy külön funkció, ami biztonságosan megkeresi a Flutter SDK-t
-fun loadFlutterSdkPath(settings: Settings): String {
-    val localPropertiesFile = File(settings.rootDir, "local.properties")
-    if (localPropertiesFile.exists()) {
-        val properties = Properties()
-        properties.load(localPropertiesFile.inputStream())
-        val sdkPath = properties.getProperty("flutter.sdk")
-        if (sdkPath != null) {
-            return sdkPath
-        }
-    }
-    val flutterRoot = System.getenv("FLUTTER_ROOT")
-    if (flutterRoot != null) {
-        return flutterRoot
-    }
-    throw GradleException("Flutter SDK not found. Define location in local.properties or with FLUTTER_ROOT env var.")
-}
-
-// Meghívjuk a funkciót, hogy megkapjuk az útvonalat
-val flutterSdkPath = loadFlutterSdkPath(settings)
-
-// Alkalmazzuk a Flutter beállító scriptjét a kapott útvonallal
-includeBuild(File(flutterSdkPath, "packages/flutter_tools/gradle"))
-
