@@ -139,7 +139,10 @@ jobs:
           cd android
           ./gradlew :app:dependencies --configuration debugCompileClasspath | grep -i flutter || true
           ./gradlew :app:dependencies --configuration releaseCompileClasspath | grep -i flutter || true
-     
+
+     # EZ AZ ÚJ TESZT LÉPÉS
+      - name: Test Network Connectivity to Flutter Repo
+        run: curl -v https://storage.googleapis.com/download.flutter.io
       
       # 12) DEBUG build 
       - name: Build DEBUG APk
