@@ -30,10 +30,13 @@ jobs:
           flutter-version: "3.35.2"
           cache: true
 
-      # 3) Egyetlen forrásból írjuk a local.properties-t
+        # 3) Egyetlen forrásból írjuk a local.properties-t
       - name: Write local.properties (single source of truth)
+        shell: bash
         run: |
+          mkdir -p android
           echo "flutter.sdk=${FLUTTER_ROOT}" > android/local.properties
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" >> android/local.properties
           echo "=== android/local.properties ==="
           cat android/local.properties
 
