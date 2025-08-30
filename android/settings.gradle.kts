@@ -1,6 +1,6 @@
-
 pluginManagement {
-    includeBuild("app/flutter/ephemeral/.android/include_flutter.groovy")
+    // A JAVÍTÁS: A helyes relatív útvonal a projekt gyökerében lévő generált fájlhoz
+    includeBuild("../ephemeral/.android/include_flutter.groovy")
 }
 
 dependencyResolutionManagement {
