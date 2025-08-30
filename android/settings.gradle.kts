@@ -1,3 +1,5 @@
+import java.io.File
+
 pluginManagement {
     repositories {
         google()
