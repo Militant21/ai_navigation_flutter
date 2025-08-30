@@ -4,7 +4,7 @@ version: 0.1.1
 
 environment:
   sdk: ">=3.5.0 <4.0.0"        # Dart SDK (3.5.x a runneren oké)
-  flutter: ">=3.22.0"          # Flutter min. verzió-követelmény
+  flutter: ">=3.35.2"          # Flutter min. verzió-követelmény
 
 dependencies:
   flutter:
@@ -64,7 +64,7 @@ flutter_launcher_icons:
   android: "ic_launcher"
  # ios: true
   image_path: assets/icon/icon.png
-  min_sdk_android: 21
+  min_sdk_android: 24
   remove_alpha_ios: true
 
 dependency_overrides:
