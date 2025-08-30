@@ -3,7 +3,7 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        // Ez a sor mondja meg, HOL van a Flutter plugin
+        // EZ KELL: A Flutter plugin helye
         maven {
             url = uri("https://storage.googleapis.com/download.flutter.io")
         }
@@ -15,7 +15,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Ez a sor a többi Flutter csomaghoz kell
+        // EZ IS KELL: A többi Flutter csomag helye
         maven {
             url = uri("https://storage.googleapis.com/download.flutter.io")
         }
@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 rootProject.name = "ai_navigation_flutter"
 include(":app")
 
-// Ez a sor mondja meg, HOGY a Flutter plugin létezik
+// EZ IS KELL: Megmondja, hogy a plugin létezik
 plugins {
     id("dev.flutter.flutter-gradle-plugin").version("1.0.0").apply(false)
 }
