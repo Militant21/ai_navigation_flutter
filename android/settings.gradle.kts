@@ -1,42 +1,49 @@
+// android/settings.gradle.kts
+
 import java.io.File
-import java.util.Properties
 import org.gradle.api.GradleException
 
+// --- Plugin források és verziók ---
 pluginManagement {
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
-        // Flutter Maven repo (embedding/artifacts)
-        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
-
-    // A Flutter Gradle plugin feloldása a Flutter SDK-ból (NINCS legacy "apply")
-    val localProps = File(rootDir, "local.properties")
-    val props = Properties().apply {
-        if (localProps.exists()) localProps.inputStream().use { load(it) }
-    }
-    val flutterSdk: String = props.getProperty("flutter.sdk")
-        ?: System.getenv("FLUTTER_ROOT")
-        ?: throw GradleException(
-            "Flutter SDK not found. Set flutter.sdk in android/local.properties or FLUTTER_ROOT env var."
-        )
-
-    includeBuild(File(flutterSdk, "packages/flutter_tools/gradle"))
+    // Itt adjuk meg a pluginverziókat, NEM az app modulban
     plugins {
-        id("dev.flutter.flutter-gradle-plugin")
+        id("com.android.application") version "8.7.0"
+        id("org.jetbrains.kotlin.android") version "2.1.0"
     }
 }
 
+// A függőségek központi kezelése + Flutter maven repo
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
-        // Flutter Maven repo a runtime/artifactokhoz
-        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+        maven(url = "https://storage.googleapis.com/download.flutter.io")
     }
 }
 
 rootProject.name = "ai_navigation_flutter"
 include(":app")
+
+// --- Flutter SDK feloldása robust módon (local.properties -> FLUTTER_ROOT) ---
+val flutterSdkPath: String = run {
+    val localProps = File(rootDir, "local.properties")
+    if (localProps.exists()) {
+        val p = java.util.Properties()
+        localProps.inputStream().use { p.load(it) }
+        p.getProperty("flutter.sdk")?.let { return@run it }
+    }
+    System.getenv("FLUTTER_ROOT")
+        ?: throw GradleException(
+            "Flutter SDK not found. Állítsd be az android/local.properties-ben (flutter.sdk), " +
+            "vagy a FLUTTER_ROOT környezeti változóban."
+        )
+}
+
+// A Flutter Gradle plugin elérhetővé tétele (nincs több apply(from = ...))
+includeBuild(File(flutterSdkPath, "packages/flutter_tools/gradle"))
