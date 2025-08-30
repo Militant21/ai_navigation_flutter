@@ -34,7 +34,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: "3.35.6"
+          flutter-version: "3.35.2"
           cache: true 
 
         # 3) Egyetlen forrásból írjuk a local.properties-t
@@ -141,18 +141,18 @@ jobs:
           ./gradlew :app:dependencies --configuration releaseCompileClasspath | grep -i flutter || true
      
       
-      # 12) DEBUG build (stacktrace-szel)
-      - name: Build DEBUG APK (with stacktrace)
+      # 12) DEBUG build 
+      - name: Build DEBUG APK
         working-directory: android
         env:
           FLUTTER_ROOT: ${{ env.FLUTTER_HOME }}
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug 
 
-      - name: Build RELEASE APK (minify + shrink + stacktrace)
+      - name: Build RELEASE APK (minify + shrink )
         working-directory: android
         env:
          FLUTTER_ROOT: ${{ env.FLUTTER_HOME }}
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease 
 
       # 14) Ellenőrzés: merged manifest csak V2-es?
       - name: Verify merged manifest is V2-only
