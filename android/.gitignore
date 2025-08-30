@@ -12,3 +12,7 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Ne kerüljön zip a repóba
+gradle/gradle-*.zip
+android/gradle/wrapper/gradle-*.zip
