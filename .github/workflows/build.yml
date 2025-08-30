@@ -140,22 +140,16 @@ jobs:
           ./gradlew :app:dependencies --configuration debugCompileClasspath | grep -i flutter || true
           ./gradlew :app:dependencies --configuration releaseCompileClasspath | grep -i flutter || true
      
-      # 12) DEBUG build (dev-friendly signing)
+      
+      # 12) DEBUG build (stacktrace-szel)
       - name: Build DEBUG APK (with stacktrace)
-        run: |
-          flutter build apk --debug \
-          --build-number="${GITHUB_RUN_NUMBER:-1}" \
-          --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER:-1}" \
-          -- --stacktrace
+        working-directory: android
+        run: ./gradlew assembleDebug --stacktrace
 
-
-
-      # 13) RELEASE build (minify + shrink)
-      - name: Build RELEASE APK (minify + shrink)
-        run: |
-          flutter build apk --release \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date '+%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+# 13) RELEASE build (stacktrace-szel)
+      - name: Build RELEASE APK (minify + shrink + stacktrace)
+        working-directory: android
+        run: ./gradlew assembleRelease --stacktrace
 
       # 14) Ellenőrzés: merged manifest csak V2-es?
       - name: Verify merged manifest is V2-only
