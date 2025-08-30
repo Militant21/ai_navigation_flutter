@@ -127,6 +127,12 @@ jobs:
           ./gradlew :app:buildEnvironment || true
           cat local.properties || true
 
+      - name: Check Flutter embedding in classpath (debug/release)
+        run: |
+          cd android
+          ./gradlew :app:dependencies --configuration debugCompileClasspath | grep -i flutter || true
+          ./gradlew :app:dependencies --configuration releaseCompileClasspath | grep -i flutter || true
+     
       # 12) DEBUG build (dev-friendly signing)
       - name: Build DEBUG APK (dev-friendly signing)
         run: |
