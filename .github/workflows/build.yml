@@ -20,6 +20,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+  
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
 
       # 2) Flutter környezet
       - name: Set up Flutter
