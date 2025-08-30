@@ -1,6 +1,8 @@
+import org.gradle.api.initialization.Settings
 import java.io.File
 import java.util.Properties
 
+// --- Plugin- és függőségkezelés (ez a rész változatlan) ---
 pluginManagement {
     repositories {
         google()
@@ -20,19 +22,30 @@ dependencyResolutionManagement {
 rootProject.name = "ai_navigation_flutter"
 include(":app")
 
-// --- JAVÍTOTT RÉSZ ---
 
-// Közvetlenül létrehozzuk a hivatkozást a "local.properties" fájlra
-val localPropertiesFile = File(rootProject.rootDir, "local.properties")
-val properties = Properties()
+// --- A JAVÍTOTT, ROBUSTUS Flutter SDK betöltés ---
 
-if (localPropertiesFile.exists()) {
-    properties.load(java.io.FileInputStream(localPropertiesFile))
+// Egy külön funkció, ami biztonságosan megkeresi a Flutter SDK-t
+fun loadFlutterSdkPath(settings: Settings): String {
+    val localPropertiesFile = File(settings.rootDir, "local.properties")
+    if (localPropertiesFile.exists()) {
+        val properties = Properties()
+        properties.load(localPropertiesFile.inputStream())
+        val sdkPath = properties.getProperty("flutter.sdk")
+        if (sdkPath != null) {
+            return sdkPath
+        }
+    }
+    val flutterRoot = System.getenv("FLUTTER_ROOT")
+    if (flutterRoot != null) {
+        return flutterRoot
+    }
+    throw GradleException("Flutter SDK not found. Define location in local.properties or with FLUTTER_ROOT env var.")
 }
 
-val flutterSdkPath = properties.getProperty("flutter.sdk")
-if (flutterSdkPath == null) {
-    throw GradleException("Flutter SDK not found. Define location in local.properties.")
-}
+// Meghívjuk a funkciót, hogy megkapjuk az útvonalat
+val flutterSdkPath = loadFlutterSdkPath(settings)
 
-apply(from = "$flutterSdkPath/packages/flutter_tools/gradle/flutter.gradle")
+// Alkalmazzuk a Flutter beállító scriptjét a kapott útvonallal
+apply(from = File(flutterSdkPath, "packages/flutter_tools/gradle/flutter.gradle"))
+
