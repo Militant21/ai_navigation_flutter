@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // Flutter Gradle plugin – a verziót a settings adja
     id("dev.flutter.flutter-gradle-plugin")
 }
 
