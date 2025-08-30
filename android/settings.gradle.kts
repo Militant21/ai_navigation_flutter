@@ -3,6 +3,10 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        // EZ A SOR HIÁNYZOTT: A Flutter plugin saját helye
+        maven {
+            url = uri("https://storage.googleapis.com/download.flutter.io")
+        }
     }
 }
 
@@ -11,15 +15,12 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Ez a sor itt is kell a többi Flutter csomaghoz
+        maven {
+            url = uri("https://storage.googleapis.com/download.flutter.io")
+        }
     }
 }
 
 rootProject.name = "ai_navigation_flutter"
 include(":app")
-
-// --- HIÁNYZÓ RÉSZ ---
-// Ez a blokk megmondja a buildnek, hogy a Flutter plugin létezik
-// és elérhető a projekt számára.
-plugins {
-    id("dev.flutter.flutter-gradle-plugin").version("1.0.0").apply(false)
-}
