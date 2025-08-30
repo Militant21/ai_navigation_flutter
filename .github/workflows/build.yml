@@ -38,14 +38,14 @@ jobs:
           cache: false
 
         # 3) Egyetlen forrásból írjuk a local.properties-t
+      # build.yml – a flutter-action után, MINDEN gradle lépés előtt
       - name: Write local.properties (single source of truth)
-        shell: bash
         run: |
-          mkdir -p android
-          echo "flutter.sdk=${FLUTTER_ROOT}" > android/local.properties
-          echo "sdk.dir=${ANDROID_SDK_ROOT}" >> android/local.properties
-          echo "=== android/local.properties ==="
-          cat android/local.properties
+           mkdir -p android
+           echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+           echo "flutter.sdk=${FLUTTER_HOME:-$FLUTTER_ROOT}" >> android/local.properties
+           echo "=== android/local.properties ==="
+           cat android/local.properties
 
       # 4) Gradle cache
       #- name: Cache Gradle
@@ -144,11 +144,14 @@ jobs:
       # 12) DEBUG build (stacktrace-szel)
       - name: Build DEBUG APK (with stacktrace)
         working-directory: android
+        env:
+          FLUTTER_ROOT: ${{ env.FLUTTER_HOME }}
         run: ./gradlew assembleDebug --stacktrace
 
-# 13) RELEASE build (stacktrace-szel)
       - name: Build RELEASE APK (minify + shrink + stacktrace)
         working-directory: android
+        env:
+         FLUTTER_ROOT: ${{ env.FLUTTER_HOME }}
         run: ./gradlew assembleRelease --stacktrace
 
       # 14) Ellenőrzés: merged manifest csak V2-es?
