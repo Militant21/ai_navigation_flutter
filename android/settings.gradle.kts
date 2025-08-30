@@ -47,5 +47,5 @@ fun loadFlutterSdkPath(settings: Settings): String {
 val flutterSdkPath = loadFlutterSdkPath(settings)
 
 // Alkalmazzuk a Flutter beállító scriptjét a kapott útvonallal
-apply(from = File(flutterSdkPath, "packages/flutter_tools/gradle/flutter.gradle"))
+includeBuild(File(flutterSdkPath, "packages/flutter_tools/gradle"))
 
