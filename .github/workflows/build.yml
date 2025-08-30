@@ -142,11 +142,8 @@ jobs:
      
       
       # 12) DEBUG build 
-      - name: Build DEBUG APK
-        working-directory: android
-        env:
-          FLUTTER_ROOT: ${{ env.FLUTTER_HOME }}
-        run: ./gradlew assembleDebug 
+      - name: Build DEBUG APk
+        run: flutter build apk --debug
 
       - name: Build RELEASE APK (minify + shrink )
         working-directory: android
