@@ -31,3 +31,8 @@ android/gradle/wrapper/*.zip
 /gradlew.bat
 /android/gradlew.bat
 *.cmd
+
+# Backup/reject szemét
+*.bak
+*.orig
+*.rej
