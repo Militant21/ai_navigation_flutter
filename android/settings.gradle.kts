@@ -1,17 +1,13 @@
-// android/settings.gradle.kts
-
 pluginManagement {
     repositories {
-        gradlePluginPortal()
         google()
         mavenCentral()
-        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+        gradlePluginPortal()
+        // Ez a sor mondja meg, HOL van a Flutter plugin
+        maven {
+            url = uri("https://storage.googleapis.com/download.flutter.io")
+        }
     }
-}
-
-plugins {
-    // A LOADERNEK KELL A VERZIÓ!
-    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
 }
 
 dependencyResolutionManagement {
@@ -19,10 +15,17 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Flutter binárisok (engine/artifacts) – ez maradhat
-        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
+        // Ez a sor a többi Flutter csomaghoz (engine, stb.) kell
+        maven {
+            url = uri("https://storage.googleapis.com/download.flutter.io")
+        }
     }
 }
 
 rootProject.name = "ai_navigation_flutter"
 include(":app")
+
+// Ez a blokk "regisztrálja" a Flutter plugint, hogy a többi fájl használni tudja
+plugins {
+    id("dev.flutter.flutter-gradle-plugin").version("1.0.0").apply(false)
+}
