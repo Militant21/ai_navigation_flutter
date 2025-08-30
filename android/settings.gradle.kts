@@ -8,7 +8,7 @@ pluginManagement {
     plugins {
         // Adjunk verziót a plugineknek itt (app/build.gradle.kts-ben NEM!)
         id("com.android.application") version "8.7.0"
-        id("org.jetbrains.kotlin.android") version "1.9.25"
+        id("org.jetbrains.kotlin.android") version "2.1.0"
         // A Flutter Gradle plugint a Flutter SDK adja, ehhez nem írunk verziót
         id("dev.flutter.flutter-gradle-plugin")
     }
