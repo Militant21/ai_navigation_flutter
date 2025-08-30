@@ -140,6 +140,9 @@ jobs:
           ./gradlew :app:dependencies --configuration debugCompileClasspath | grep -i flutter || true
           ./gradlew :app:dependencies --configuration releaseCompileClasspath | grep -i flutter || true
      
+         # EZ AZ ÚJ LÉPÉS
+      - name: Clean Gradle project
+        run: cd android && ./gradlew clean
       
       # 12) DEBUG build (stacktrace-szel)
       - name: Build DEBUG APK (with stacktrace)
