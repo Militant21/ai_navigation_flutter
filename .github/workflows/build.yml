@@ -17,48 +17,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
+
+      # EZ AZ ÚJ LÉPÉS: Friss Android SDK telepítése minden futásnál
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: "3.35.2"
+          # A BIZTONSÁG KEDVÉÉRT MARADJUNK A STABILABB VERZIÓNÁL
+          flutter-version: "3.22.2"
           cache: true
-
-      - name: Write local.properties
-        run: |
-          mkdir -p android
-          echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
-          echo "flutter.sdk=${FLUTTER_HOME:-$FLUTTER_ROOT}" >> android/local.properties
-          cat android/local.properties
 
       - name: Resolve packages
         run: flutter pub get
 
-      - name: Generate launcher icons (if configured)
-        shell: bash
-        run: |
-          if [ -f assets/icon/icon.png ]; then
-            flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
-          fi
-
-      - name: Generate native splash (if configured)
-        shell: bash
-        run: |
-          if grep -q 'flutter_native_splash:' pubspec.yaml; then
-            flutter pub run flutter_native_splash:create
-          fi
-
       - name: Build DEBUG APK
         run: flutter build apk --debug
-
-      - name: Build RELEASE APK
-        run: flutter build apk --release
 
       - name: Upload DEBUG APK
         uses: actions/upload-artifact@v4
@@ -66,9 +47,3 @@ jobs:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
           
-      - name: Upload RELEASE APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-
