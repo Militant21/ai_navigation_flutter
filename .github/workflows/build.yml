@@ -46,9 +46,8 @@ jobs:
       - name: Create platform-specific project files
         run: flutter create .
 
-      - name: Bump Gradle wrapper to 8.7
-        run: |
-           sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+      - name: Use Gradle 8.7
+        run: sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
