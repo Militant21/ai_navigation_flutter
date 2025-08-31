@@ -44,7 +44,7 @@ jobs:
         run: flutter pub get
 
       - name: Create platform-specific project files
-        run: flutter create --platforms=android,ios .
+        run: flutter create --platforms=android .#,ios- majd később 
 
       - name: Bump Android SDKs (min=30, compile/target=35) + Gradle 8.11.1
         run: |
