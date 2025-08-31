@@ -9,6 +9,7 @@ build/
 *.iml
 
 # Platform build mappák
+/android/
 android/.gradle/
 android/app/build/
 ios/Pods/
