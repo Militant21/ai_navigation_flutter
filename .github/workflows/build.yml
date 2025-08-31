@@ -23,13 +23,15 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Android SDK34
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: |
-              platforms;android-34
-              build-tools;34.0.0
-              platform-tools
+
+      - name: Accept licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install SDK components
+        run: |
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
