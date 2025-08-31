@@ -29,22 +29,19 @@ jobs:
           flutter-version: '3.35.2'
           cache: true
 
+      - name: Write local.properties (single source of truth)
+        run: |
+          mkdir -p android
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+          echo "flutter.sdk=${FLUTTER_HOME:-$FLUTTER_ROOT}" >> android/local.properties
+          cat android/local.properties
+
       # Ha nincs android/ mappa, generáljuk (később takarítunk)
       - name: Ensure Android folder (safe)
         run: |
           [ -d android ] || flutter create --platforms=android --no-pub .
 
-      - name: Git cleanup for pub git deps (strong)
-        run: |
-          set -e
-          git config --global --unset-all "http.https://github.com.extraheader" || true
-          git config --global --unset-all "http.https://github.com.insteadof" || true
-
-      - name: Resolve packages
-        run: flutter pub get
-
-      - name: Force debug signing for release (dev only)
-        run: bash ci/force_debug_release.sh
+      
 
       - name: Generate launcher icons if asset present
         shell: bash
