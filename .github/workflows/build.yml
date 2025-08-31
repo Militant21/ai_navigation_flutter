@@ -91,7 +91,7 @@ jobs:
             dependencies {
                  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
                 }
-              EOF
+          EOF
           fi
           # Groovy
           if [ -f android/app/build.gradle ] && ! grep -q "coreLibraryDesugaringEnabled" android/app/build.gradle; then
@@ -127,7 +127,7 @@ jobs:
                   jvmTarget = "17"
                 }
               }
-              EOF
+          EOF
           fi
           # Groovy
           if [ -f android/app/build.gradle ] && ! grep -q "jvmTarget = '17'" android/app/build.gradle; then
