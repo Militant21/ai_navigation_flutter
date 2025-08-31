@@ -1,6 +1,14 @@
 // android/settings.gradle.kts
-import java.io.File
 import java.util.Properties
+import java.io.File
+
+fun flutterSdkFromLocalProperties(): String? {
+    val f = File("local.properties")
+    if (!f.exists()) return null
+    val p = Properties()
+    f.inputStream().use { p.load(it) }
+    return p.getProperty("flutter.sdk")
+}
 
 pluginManagement {
     repositories {
@@ -9,11 +17,24 @@ pluginManagement {
         gradlePluginPortal()
         maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
+
+    // >>> A Flutter SDK útvonal feloldása MÁR itt, a plugin alkalmazása ELŐTT
+    val flutterSdkPath: String? =
+        System.getenv("FLUTTER_ROOT")
+            ?: System.getenv("FLUTTER_HOME")
+            ?: flutterSdkFromLocalProperties()
+
+    require(!flutterSdkPath.isNullOrBlank()) {
+        "Flutter SDK path not found. Set FLUTTER_ROOT/FLUTTER_HOME or write android/local.properties with flutter.sdk=/path/to/flutter"
+    }
+
+    println(">> Using Flutter SDK at: $flutterSdkPath")
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 }
 
-// 1) Flutter loader plugin – KELL a verzió!
+// >>> NINCS version megadva!
 plugins {
-    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
+    id("dev.flutter.flutter-plugin-loader")
 }
 
 dependencyResolutionManagement {
@@ -27,22 +48,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "ai_navigation_flutter"
 include(":app")
-
-// 2) Biztos fallback a Flutter SDK-ból, ha a Plugin Portal nem elérhető
-fun flutterSdkFromLocalProperties(): String? {
-    val f = File("local.properties")
-    if (!f.exists()) return null
-    val p = Properties()
-    f.inputStream().use { p.load(it) }
-    return p.getProperty("flutter.sdk")
-}
-
-val flutterSdkPath: String? =
-    System.getenv("FLUTTER_ROOT")
-        ?: System.getenv("FLUTTER_HOME")
-        ?: flutterSdkFromLocalProperties()
-
-if (flutterSdkPath != null) {
-    println("Including Flutter gradle from: $flutterSdkPath")
-    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-}
