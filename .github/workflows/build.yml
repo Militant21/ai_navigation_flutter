@@ -23,8 +23,12 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK34
         uses: android-actions/setup-android@v3
+        packages: |
+              platforms;android-34
+              build-tools;34.0.0
+              platform-tools
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -38,13 +42,6 @@ jobs:
 
       - name: Create platform-specific project files
         run: flutter create .
-
-      # EZ AZ ÚJ, DÖNTŐ LÉPÉS: SDK verziók átírása
-      - name: Modify Gradle files for SDK 33
-        run: |
-          sed -i 's/compileSdk = 34/compileSdk = 33/g' android/app/build.gradle.kts
-          sed -i 's/targetSdk = 34/targetSdk = 33/g' android/app/build.gradle.kts
-          echo "SDK versions changed to 33"
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
