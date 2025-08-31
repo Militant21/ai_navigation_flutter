@@ -1,4 +1,4 @@
-          name: Flutter APK CI
+name: Flutter APK CI
 
 on:
   push:
