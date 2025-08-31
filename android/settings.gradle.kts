@@ -1,14 +1,6 @@
 // android/settings.gradle.kts
-import java.util.Properties
 import java.io.File
-
-fun flutterSdkFromLocalProperties(): String? {
-    val f = File("local.properties")
-    if (!f.exists()) return null
-    val p = Properties()
-    f.inputStream().use { p.load(it) }
-    return p.getProperty("flutter.sdk")
-}
+import java.util.Properties
 
 pluginManagement {
     repositories {
@@ -18,21 +10,28 @@ pluginManagement {
         maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
 
-    // >>> A Flutter SDK útvonal feloldása MÁR itt, a plugin alkalmazása ELŐTT
+    // Flutter SDK helye: env -> local.properties
     val flutterSdkPath: String? =
         System.getenv("FLUTTER_ROOT")
             ?: System.getenv("FLUTTER_HOME")
-            ?: flutterSdkFromLocalProperties()
+            ?: run {
+                val f = File("local.properties")
+                if (!f.exists()) null else Properties().let { p ->
+                    f.inputStream().use { p.load(it) }
+                    p.getProperty("flutter.sdk")
+                }
+            }
 
     require(!flutterSdkPath.isNullOrBlank()) {
-        "Flutter SDK path not found. Set FLUTTER_ROOT/FLUTTER_HOME or write android/local.properties with flutter.sdk=/path/to/flutter"
+        "Flutter SDK path not found. Állítsd be a FLUTTER_ROOT/FLUTTER_HOME változót, " +
+        "vagy írj android/local.properties fájlt: flutter.sdk=/path/to/flutter"
     }
 
     println(">> Using Flutter SDK at: $flutterSdkPath")
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 }
 
-// >>> NINCS version megadva!
+// NINCS verzió megadva a loaderhez!
 plugins {
     id("dev.flutter.flutter-plugin-loader")
 }
