@@ -14,19 +14,19 @@ dependencies:
     sdk: flutter
 
   # --- IDE KELLŐ FŐ CSOMAGOK (a build hibák miatt) ---
-  easy_localization: any
-  path_provider: any
-  geolocator: any
-  flutter_background_service: any
-  flutter_background_service_android: any
-  flutter_local_notifications: any
-  flutter_map: any
-  latlong2: any
-  shared_preferences: any
-  flutter_tts: any
-  sqflite: any
-  vector_map_tiles: any
-  vector_map_tiles_pmtiles: any
+  easy_localization: ^3.0.7
+  path_provider: ^2.1.5
+  geolocator: ^12.0.0
+  flutter_background_service: ^5.0.6
+  flutter_local_notifications: ^17.1.2
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+  shared_preferences: ^2.2.3
+  flutter_tts: ^4.0.2
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  vector_map_tiles: ^3.0.0
+  vector_map_tiles_pmtiles: ^1.0.0
 
 dev_dependencies:
   flutter_test:
