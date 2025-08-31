@@ -81,33 +81,33 @@ jobs:
           # KTS
           if [ -f android/app/build.gradle.kts ] && ! grep -q "coreLibraryDesugaringEnabled" android/app/build.gradle.kts; then
             cat >> android/app/build.gradle.kts <<'EOF'
-             android {
-              compileOptions {
+              android {
+               compileOptions {
                  sourceCompatibility = JavaVersion.VERSION_17
                  targetCompatibility = JavaVersion.VERSION_17
                  isCoreLibraryDesugaringEnabled = true
                 }
-            }
-            dependencies {
+              }
+              dependencies {
                  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
                 }
           EOF
           fi
           # Groovy
           if [ -f android/app/build.gradle ] && ! grep -q "coreLibraryDesugaringEnabled" android/app/build.gradle; then
-            cat >> android/app/build.gradle <<'EOF'
-              android {
-                compileOptions {
+             cat >> android/app/build.gradle <<'EOF'
+               android {
+                 compileOptions {
                    sourceCompatibility JavaVersion.VERSION_17
                    targetCompatibility JavaVersion.VERSION_17
                    coreLibraryDesugaringEnabled true
-                }
-              }
-              dependencies {
-                  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
-              }
-              EOF
-              fi
+                 }
+               }
+               dependencies {
+                   coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+               }
+          EOF
+          fi
 
       - name: Align Kotlin/Java to JVM 17
         run: |
@@ -118,30 +118,30 @@ jobs:
           fi
           # KTS
           if [ -f android/app/build.gradle.kts ] && ! grep -q 'jvmTarget = "17"' android/app/build.gradle.kts; then
-            cat >> android/app/build.gradle.kts <<'EOF'
-              kotlin {
-                jvmToolchain(17)
-              }
-              android {
-                kotlinOptions {
-                  jvmTarget = "17"
-                }
-              }
+             cat >> android/app/build.gradle.kts <<'EOF'
+               kotlin {
+                 jvmToolchain(17)
+               }
+               android {
+                 kotlinOptions {
+                   jvmTarget = "17"
+                 }
+               }
           EOF
           fi
           # Groovy
           if [ -f android/app/build.gradle ] && ! grep -q "jvmTarget = '17'" android/app/build.gradle; then
-            cat >> android/app/build.gradle <<'EOF'
+             cat >> android/app/build.gradle <<'EOF'
               kotlin {
                jvmToolchain(17)
               }
-            android {
-              kotlinOptions {
+             android {
+               kotlinOptions {
                 jvmTarget = '17'
+               }
              }
-            }
-            EOF
-            fi
+          EOF
+          fi
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
