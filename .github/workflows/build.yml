@@ -1,4 +1,4 @@
-name: Flutter APK CI
+          name: Flutter APK CI
 
 on:
   push:
@@ -23,7 +23,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # EZ AZ ÚJ LÉPÉS: Friss Android SDK telepítése minden futásnál
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
@@ -31,12 +30,14 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          # A BIZTONSÁG KEDVÉÉRT MARADJUNK A STABILABB VERZIÓNÁL
           flutter-version: "3.22.2"
           cache: true
 
       - name: Resolve packages
         run: flutter pub get
+
+      - name: Create platform-specific project files
+        run: flutter create .
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
@@ -46,4 +47,3 @@ jobs:
         with:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
-          
