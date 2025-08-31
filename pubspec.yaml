@@ -4,35 +4,7 @@ version: 0.1.1
 
 environment:
   sdk: '>=3.4.0 <4.0.0'  # <-- Javítva erre a kompatibilis verzióra
-  flutter: '>=3.22.0'
-
-
-dependencies:
-  flutter:
-    sdk: flutter
-
-  # meglévők – maradhatnak
-  flutter_map: ^6.2.1
-  vector_map_tiles: ^7.0.0
-  vector_map_tiles_pmtiles: ">=1.1.0 <2.0.0"  # <- EZ a jó csomagnév
-  vector_tile_renderer: ^5.2.1   
-  latlong2: ^0.9.1
-  background_downloader: ^8.4.2
-  path_provider: ^2.1.4
-  sqflite: ^2.3.3
-  shared_preferences: ^2.3.2
-  flutter_tts: ^3.8.5
-  easy_localization: ^3.0.5
-  geolocator: ^14.0.0
-  url_launcher: ^6.3.0
-  http: ^1.2.2
-  collection: ^1.18.0
-
-  # új/frissített – 5.1-es háttér + értesítés
-  flutter_background_service: ^5.1.0
-  flutter_background_service_android: ^6.0.0
-  flutter_local_notifications: ^17.2.2
-  workmanager: ^0.5.2
+  flutter: '>=3.22.2'
 
 dev_dependencies:
   flutter_test:
