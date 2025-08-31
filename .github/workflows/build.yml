@@ -17,10 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Android SDK
@@ -39,6 +39,13 @@ jobs:
       - name: Create platform-specific project files
         run: flutter create .
 
+      # EZ AZ ÚJ, DÖNTŐ LÉPÉS: SDK verziók átírása
+      - name: Modify Gradle files for SDK 33
+        run: |
+          sed -i 's/compileSdk = 34/compileSdk = 33/g' android/app/build.gradle.kts
+          sed -i 's/targetSdk = 34/targetSdk = 33/g' android/app/build.gradle.kts
+          echo "SDK versions changed to 33"
+
       - name: Build DEBUG APK
         run: flutter build apk --debug
 
@@ -47,3 +54,4 @@ jobs:
         with:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
+          
