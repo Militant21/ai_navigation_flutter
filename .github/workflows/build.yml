@@ -30,6 +30,13 @@ jobs:
           flutter-version: "3.35.2"
           cache: true
 
+      - name: Write local.properties
+        run: |
+          mkdir -p android
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+          echo "flutter.sdk=${FLUTTER_HOME:-$FLUTTER_ROOT}" >> android/local.properties
+          cat android/local.properties
+
       - name: Resolve packages
         run: flutter pub get
 
