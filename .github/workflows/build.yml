@@ -4,7 +4,6 @@ on:
   push:
     paths-ignore:
       - "**/*.md"
-      - ".github/workflows/lock.yml"
   workflow_dispatch:
 
 permissions:
@@ -13,67 +12,56 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: '21'
+          java-version: '17'
+          distribution: 'temurin'
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: '3.35.2'
+          flutter-version: "3.35.2"
           cache: true
 
-      - name: Write local.properties (single source of truth)
-        run: |
-          mkdir -p android
-          echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
-          echo "flutter.sdk=${FLUTTER_HOME:-$FLUTTER_ROOT}" >> android/local.properties
-          cat android/local.properties
+      - name: Resolve packages
+        run: flutter pub get
 
-      # Ha nincs android/ mappa, generáljuk (később takarítunk)
-      - name: Ensure Android folder (safe)
-        run: |
-          [ -d android ] || flutter create --platforms=android --no-pub .
-
-      
-
-      - name: Generate launcher icons if asset present
+      - name: Generate launcher icons (if configured)
         shell: bash
         run: |
           if [ -f assets/icon/icon.png ]; then
             flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons-android.yaml
-          else
-            echo "assets/icon/icon.png not found, skipping launcher icon generation."
           fi
 
       - name: Generate native splash (if configured)
         shell: bash
         run: |
-          if grep -Eq '^\s*flutter_native_splash\s*:' pubspec.yaml; then
+          if grep -q 'flutter_native_splash:' pubspec.yaml; then
             flutter pub run flutter_native_splash:create
-          else
-            echo "No flutter_native_splash config in pubspec.yaml, skipping splash."
           fi
 
-      - name: Build DEBUG APK (dev-friendly signing)
-        run: |
-          flutter build apk --debug \
-            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+      - name: Build DEBUG APK
+        run: flutter build apk --debug
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk            --build-number="${GITHUB_RUN_NUMBER}" \
-            --build-name="$(date +'%Y.%m.%d').${GITHUB_RUN_NUMBER}"
+      - name: Build RELEASE APK
+        run: flutter build apk --release
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload DEBUG APK
+        uses: actions/upload-artifact@v4
         with:
           name: apk-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
+          
+      - name: Upload RELEASE APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+
