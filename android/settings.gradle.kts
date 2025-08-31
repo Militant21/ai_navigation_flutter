@@ -9,30 +9,10 @@ pluginManagement {
         gradlePluginPortal()
         maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
     }
-
-    // Flutter SDK helye: env -> local.properties
-    val flutterSdkPath: String? =
-        System.getenv("FLUTTER_ROOT")
-            ?: System.getenv("FLUTTER_HOME")
-            ?: run {
-                val f = File("local.properties")
-                if (!f.exists()) null else Properties().let { p ->
-                    f.inputStream().use { p.load(it) }
-                    p.getProperty("flutter.sdk")
-                }
-            }
-
-    require(!flutterSdkPath.isNullOrBlank()) {
-        "Flutter SDK path not found. Állítsd be a FLUTTER_ROOT/FLUTTER_HOME változót, " +
-        "vagy írj android/local.properties fájlt: flutter.sdk=/path/to/flutter"
-    }
-
-    println(">> Using Flutter SDK at: $flutterSdkPath")
-    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 }
 
-// NINCS verzió megadva a loaderhez!
 plugins {
+    // NINCS verzió megadva!
     id("dev.flutter.flutter-plugin-loader")
 }
 
@@ -47,3 +27,24 @@ dependencyResolutionManagement {
 
 rootProject.name = "ai_navigation_flutter"
 include(":app")
+
+// Flutter SDK útvonal felderítése
+fun flutterSdkFromLocalProperties(): String? {
+    val f = File("local.properties")
+    if (!f.exists()) return null
+    val p = Properties()
+    f.inputStream().use { p.load(it) }
+    return p.getProperty("flutter.sdk")
+}
+
+val flutterSdkPath: String? =
+    System.getenv("FLUTTER_ROOT")
+        ?: System.getenv("FLUTTER_HOME")
+        ?: flutterSdkFromLocalProperties()
+
+if (flutterSdkPath != null) {
+    println("Including Flutter gradle from: $flutterSdkPath")
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+} else {
+    println("WARNING: Flutter SDK path not found.")
+}
