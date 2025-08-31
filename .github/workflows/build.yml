@@ -75,6 +75,45 @@ jobs:
           sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
          fi
 
+      - name: Enable core library desugaring (Groovy/KTS)
+        run: |
+          # --- app/build.gradle.kts (Kotlin DSL) ---
+          if [ -f android/app/build.gradle.kts ] && ! grep -q "coreLibraryDesugaring" android/app/build.gradle.kts; then
+           cat >> android/app/build.gradle.kts <<'EOF'
+
+          android {
+             compileOptions {
+             sourceCompatibility = JavaVersion.VERSION_17
+             targetCompatibility = JavaVersion.VERSION_17
+             isCoreLibraryDesugaringEnabled = true
+           }
+          }
+
+          dependencies {
+            coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+          }
+          EOF
+          fi
+
+          # --- app/build.gradle (Groovy) ---
+          if [ -f android/app/build.gradle ] && ! grep -q "coreLibraryDesugaringEnabled" android/app/build.gradle; then
+           cat >> android/app/build.gradle <<'EOF'
+
+           android {
+            compileOptions {
+            sourceCompatibility JavaVersion.VERSION_17
+            targetCompatibility JavaVersion.VERSION_17
+            coreLibraryDesugaringEnabled true
+            }
+           }
+
+          dependencies {
+            coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+          }
+          EOF
+          fi
+
+
       - name: Build DEBUG APK
         run: flutter build apk --debug
 
