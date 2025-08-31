@@ -46,16 +46,34 @@ jobs:
       - name: Create platform-specific project files
         run: flutter create .
 
-      - name: Set compile/target SDK to 35
+      - name: Bump Android SDKs (min=30, compile/target=35) + Gradle 8.11.1
         run: |
-          sed -i 's/compileSdk = 34/compileSdk = 35/g' android/app/build.gradle.kts || true
-          sed -i 's/targetSdk = 34/targetSdk = 35/g'   android/app/build.gradle.kts || true
-          sed -i 's/compileSdkVersion 34/compileSdkVersion 35/g' android/app/build.gradle || true
-          sed -i 's/targetSdkVersion 34/targetSdkVersion 35/g'   android/app/build.gradle || true
+         # --- app szintű gradle (KTS vagy Groovy) ---
+          if [ -f android/app/build.gradle.kts ]; then
+           sed -i 's/minSdk = [0-9]\+/minSdk = 30/' android/app/build.gradle.kts || true
+           sed -i 's/compileSdk = [0-9]\+/compileSdk = 35/' android/app/build.gradle.kts || true
+           sed -i 's/targetSdk = [0-9]\+/targetSdk = 35/' android/app/build.gradle.kts || true
+           fi
+          if [ -f android/app/build.gradle ]; then
+           sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 30/' android/app/build.gradle || true
+           sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' android/app/build.gradle || true
+           sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/' android/app/build.gradle || true
+          fi
 
-      - name: Use Gradle 8.11.1
-        run: |
+             # --- gyökér android/build.gradle fallback ---
+         if [ -f android/build.gradle ]; then
+          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' android/build.gradle || true
+          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/' android/build.gradle || true
+         fi
+         if [ -f android/build.gradle.kts ]; then
+          sed -i 's/compileSdk = [0-9]\+/compileSdk = 35/' android/build.gradle.kts || true
+          sed -i 's/targetSdk = [0-9]\+/targetSdk = 35/' android/build.gradle.kts || true
+         fi
+
+           # --- Gradle wrapper 8.11.1 ---
+         if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
           sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.11.1-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
+         fi
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
