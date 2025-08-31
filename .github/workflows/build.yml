@@ -31,7 +31,7 @@ jobs:
 
       - name: Install SDK components
         run: |
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -45,6 +45,13 @@ jobs:
 
       - name: Create platform-specific project files
         run: flutter create .
+
+      - name: Set compile/target SDK to 35
+        run: |
+          sed -i 's/compileSdk = 34/compileSdk = 35/g' android/app/build.gradle.kts || true
+          sed -i 's/targetSdk = 34/targetSdk = 35/g'   android/app/build.gradle.kts || true
+          sed -i 's/compileSdkVersion 34/compileSdkVersion 35/g' android/app/build.gradle || true
+          sed -i 's/targetSdkVersion 34/targetSdkVersion 35/g'   android/app/build.gradle || true
 
       - name: Use Gradle 8.7
         run: sed -i 's#distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip#' android/gradle/wrapper/gradle-wrapper.properties
