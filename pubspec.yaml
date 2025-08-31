@@ -3,8 +3,9 @@ publish_to: 'none'
 version: 0.1.1
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"        # Dart SDK (3.5.x a runneren oké)
-  flutter: ">=3.22.2"          # Flutter min. verzió-követelmény
+  sdk: '>=3.4.0 <4.0.0'  # <-- Javítva erre a kompatibilis verzióra
+  flutter: '>=3.22.0'
+
 
 dependencies:
   flutter:
