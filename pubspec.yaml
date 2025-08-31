@@ -3,17 +3,35 @@ publish_to: 'none'
 version: 0.1.1
 
 environment:
-  sdk: '>=3.4.0 <4.0.0'  # <-- Javítva erre a kompatibilis verzióra
+  sdk: '>=3.4.0 <4.0.0'
   flutter: '>=3.22.2'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # easy_localization-hoz kell
+  flutter_localizations:
+    sdk: flutter
+
+  # --- IDE KELLŐ FŐ CSOMAGOK (a build hibák miatt) ---
+  easy_localization: any
+  path_provider: any
+  geolocator: any
+  flutter_background_service: any
+  flutter_background_service_android: any
+  flutter_local_notifications: any
+  flutter_map: any
+  latlong2: any
+  shared_preferences: any
+  flutter_tts: any
+  sqflite: any
+  vector_map_tiles: any
+  vector_map_tiles_pmtiles: any
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-
-  # ikon- és splash-generátorok
-  flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
@@ -23,22 +41,23 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
-    #--++terkepek helye lesz++- assets/maps/
+    # - assets/maps/   # ha később lesznek térképfájlok
 
-# --- Splash beállítás ---
+# --- Splash ---
 flutter_native_splash:
   android: true
- # ios: true
+  ios: true
   image: assets/icon/icon.png
   color: "#ffffff"
 
-# --- Launcher ikon beállítás ---
+# --- Launcher ikon ---
 flutter_launcher_icons:
   android: "ic_launcher"
- # ios: true
+  ios: true
   image_path: assets/icon/icon.png
   min_sdk_android: 24
   remove_alpha_ios: true
 
+# Nálad már volt override ehhez a stackhez – hagyjuk így
 dependency_overrides:
   vector_tile_renderer: "5.2.1"
