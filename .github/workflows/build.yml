@@ -43,14 +43,14 @@ jobs:
       - name: Resolve packages
         run: flutter pub get
 
-      - name: Generate launcher icons
-        run: flutter pub run flutter_launcher_icons:main
-  
-      - name: Generate native splash
-        run: flutter pub run flutter_native_splash:create
-
       - name: Create platform-specific project files (Android only)
         run: flutter create --platforms=android .
+
+      - name: Generate launcher icons
+        run: flutter pub run flutter_launcher_icons
+
+      - name: Generate native splash
+        run: flutter pub run flutter_native_splash:create
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
