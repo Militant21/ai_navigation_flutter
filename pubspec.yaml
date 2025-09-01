@@ -60,14 +60,14 @@ flutter:
 # --- Splash ---
 flutter_native_splash:
   android: true
-  ios: true
+  ios: false
   image: assets/icon/icon.png
   color: "#ffffff"
 
 # --- Launcher ikon ---
 flutter_launcher_icons:
   android: "ic_launcher"
-  ios: true
+  ios: false
   image_path: assets/icon/icon.png
   min_sdk_android: 24
   remove_alpha_ios: true
