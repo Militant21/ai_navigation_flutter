@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart'; // +++
 
 import 'app.dart';
-import 'background_services.dart';
+import 'background_services.dart'; // <- ezekből hívunk
 
 Future<void> main() async {
-  // +++ Splash megtartása az első frame-ig
-  final wb = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: wb);
-
+  WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
-  // értesítések + háttérszolgáltatás inicializálása
+  // Értesítések + háttérszolgáltatás inicializálása
   await initLocalNotifications();
-  await initBackgroundService();
+  await startBackgroundService();
 
   runApp(
     EasyLocalization(
@@ -24,9 +20,4 @@ Future<void> main() async {
       child: const AiNavApp(),
     ),
   );
-
-  // +++ Első frame után vegyük le a natív splasht -> nincs fehér kép
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    FlutterNativeSplash.remove();
-  });
 }
