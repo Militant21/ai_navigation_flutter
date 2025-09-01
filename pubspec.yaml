@@ -57,6 +57,21 @@ flutter:
     - assets/i18n/hu.json
     - assets/i18n/de.json
     # - assets/maps/   # ha később lesznek térképfájlok
+
+    # --- Splash ---
+flutter_native_splash:
+  android: true
+  ios: false
+  image: assets/icon/icon.png
+  color: "#ffffff"
+
+# --- Launcher ikon ---
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: false
+  image_path: assets/icon/icon.png
+  min_sdk_android: 24
+  remove_alpha_ios: true
   
 # Nálad már volt override ehhez a stackhez – hagyjuk így
 dependency_overrides:
