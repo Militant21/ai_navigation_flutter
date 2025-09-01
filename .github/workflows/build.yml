@@ -50,20 +50,7 @@ jobs:
         run: flutter pub run flutter_launcher_icons -f flutter_launcher_icons-android.yaml
 
       - name: Generate native splash
-        run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
-
-      - name: Force branding (icon + splash fallback)
-        run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
-
-      - name: Fix Android 12 splash attr namespace (v31)
-        run: |
-          set -e
-           for f in $(find android/app/src/main/res -type f -path '*/values*-v31/*.xml'); do
-            sed -i 's/name="android:attr\/postSplashScreenTheme"/name="android:postSplashScreenTheme"/g' "$f" || true
-            sed -i 's/name="attr\/postSplashScreenTheme"/name="android:postSplashScreenTheme"/g' "$f" || true
-           done
-          echo "Ellenőrzés:"
-          grep -R --line-number 'postSplashScreenTheme' android/app/src/main/res || true
+        run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yam
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
