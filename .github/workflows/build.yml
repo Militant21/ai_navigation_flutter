@@ -55,6 +55,16 @@ jobs:
       - name: Force branding (icon + splash fallback)
         run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
 
+      - name: Patch Android 12 splash attrs (namespace fix)
+        run: |
+            # javítjuk az Android 12 (API 31) v31-es értékfájlokban az attr -> android:attr neveket
+            for F in android/app/src/main/res/values-v31/*.xml; do
+            [ -f "$F" ] || continue
+              sed -i 's/name="windowSplashScreenBackground"/name="android:windowSplashScreenBackground"/g' "$F" || true
+              sed -i 's/name="windowSplashScreenAnimatedIcon"/name="android:windowSplashScreenAnimatedIcon"/g' "$F" || true
+              sed -i 's/name="postSplashScreenTheme"/name="android:postSplashScreenTheme"/g' "$F" || true
+            done
+
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
           set -e
