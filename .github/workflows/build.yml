@@ -148,6 +148,10 @@ jobs:
              }
           EOF
           fi
+ 
+
+      - name: Force branding (icon + splash fallback)
+        run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
