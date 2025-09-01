@@ -57,21 +57,22 @@ flutter:
     - assets/i18n/de.json
     # - assets/maps/   # ha később lesznek térképfájlok
 
-# --- Splash ---
 flutter_native_splash:
   android: true
   ios: false
-  image: assets/icon/icon.png
-  color: "#ffffff"
+  color: "#EFE7FF"           # tetszőleges világos háttérszín
+  image: assets/ai_logo.png  # ez legyen a középső kép
+  android_12:
+    color: "#EFE7FF"
+    image: assets/ai_logo.png
 
-# --- Launcher ikon ---
 flutter_launcher_icons:
-  android: "ic_launcher"
+  android: true
   ios: false
   image_path: assets/icon/icon.png
-  min_sdk_android: 24
-  remove_alpha_ios: true
-
+  adaptive_icon_foreground: assets/icon/icon.png
+  adaptive_icon_background: "#FFFFFF"
+  
 # Nálad már volt override ehhez a stackhez – hagyjuk így
 dependency_overrides:
   vector_tile_renderer: "5.2.1"
