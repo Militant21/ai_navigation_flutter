@@ -50,7 +50,7 @@ jobs:
         run: flutter pub run flutter_launcher_icons -f flutter_launcher_icons-android.yaml
 
       - name: Generate native splash
-        run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yam
+        run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
