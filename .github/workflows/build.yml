@@ -55,21 +55,22 @@ jobs:
       - name: Force branding (icon + splash fallback)
         run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
 
-      - name: Patch Android 12 splash attrs (namespace fix)
+      - name: Patch Android 12 splash attrs (namespace & theme fix)
         run: |
-          set -e
-            for DIR in android/app/src/main/res/values-v31 android/app/src/main/res/values-night-v31; do
-            [ -d "$DIR" ] || continue
-             for F in "$DIR"/*.xml; do
-              [ -f "$F" ] || continue
-            # CSAK a windowSplash* menjen android: névtérbe
-            sed -i 's/name="windowSplashScreenBackground"/name="android:windowSplashScreenBackground"/g' "$F" || true
-            sed -i 's/name="windowSplashScreenAnimatedIcon"/name="android:windowSplashScreenAnimatedIcon"/g' "$F" || true
-           # NE nyúlj a postSplashScreenTheme-hez (hagyjuk névtér nélkül)
-           # Javítsuk a postSplashScreenTheme cél témát a projekt témádra
-            sed -i 's/@style\/Theme\.Material\.Light\.NoActionBar/@style\/Theme\.App/g' "$F" || true
+         set -e
+          for DIR in android/app/src/main/res/values-v31 android/app/src/main/res/values-night-v31; do
+           [ -d "$DIR" ] || continue
+            for F in "$DIR"/*.xml; do
+             [ -f "$F" ] || continue
+         # 1) attr-ek névtérrel ès a hibásak cserèje
+              sed -i 's/name="windowSplashScreenBackground"/name="android:windowSplashScreenBackground"/g' "$F" || true
+              sed -i 's/name="windowSplashScreenAnimatedIcon"/name="android:windowSplashScreenAnimatedIcon"/g' "$F" || true
+              sed -i 's/name="postSplashScreenTheme"/name="android:postSplashScreenTheme"/g' "$F" || true
+        
+              sed -i 's/@style\/Theme\.SplashScreen/@style\/LaunchTheme/g' "$F" || true
+              sed -i 's/@style\/Theme\.Material\.Light\.NoActionBar/@style\/Theme\.App/g' "$F" || true
+            done
            done
-          done
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
