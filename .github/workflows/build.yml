@@ -52,6 +52,9 @@ jobs:
       - name: Generate native splash
         run: flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml
 
+      - name: Force branding (icon + splash fallback)
+        run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
+
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
           set -e
@@ -148,10 +151,6 @@ jobs:
              }
           EOF
           fi
- 
-
-      - name: Force branding (icon + splash fallback)
-        run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
 
       - name: Build DEBUG APK
         run: flutter build apk --debug
