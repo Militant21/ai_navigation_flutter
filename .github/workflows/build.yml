@@ -57,13 +57,19 @@ jobs:
 
       - name: Patch Android 12 splash attrs (namespace fix)
         run: |
-            # javítjuk az Android 12 (API 31) v31-es értékfájlokban az attr -> android:attr neveket
-            for F in android/app/src/main/res/values-v31/*.xml; do
-            [ -f "$F" ] || continue
-              sed -i 's/name="windowSplashScreenBackground"/name="android:windowSplashScreenBackground"/g' "$F" || true
-              sed -i 's/name="windowSplashScreenAnimatedIcon"/name="android:windowSplashScreenAnimatedIcon"/g' "$F" || true
-              sed -i 's/name="postSplashScreenTheme"/name="android:postSplashScreenTheme"/g' "$F" || true
-            done
+          set -e
+            for DIR in android/app/src/main/res/values-v31 android/app/src/main/res/values-night-v31; do
+            [ -d "$DIR" ] || continue
+             for F in "$DIR"/*.xml; do
+              [ -f "$F" ] || continue
+            # CSAK a windowSplash* menjen android: névtérbe
+            sed -i 's/name="windowSplashScreenBackground"/name="android:windowSplashScreenBackground"/g' "$F" || true
+            sed -i 's/name="windowSplashScreenAnimatedIcon"/name="android:windowSplashScreenAnimatedIcon"/g' "$F" || true
+           # NE nyúlj a postSplashScreenTheme-hez (hagyjuk névtér nélkül)
+           # Javítsuk a postSplashScreenTheme cél témát a projekt témádra
+            sed -i 's/@style\/Theme\.Material\.Light\.NoActionBar/@style\/Theme\.App/g' "$F" || true
+           done
+          done
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
