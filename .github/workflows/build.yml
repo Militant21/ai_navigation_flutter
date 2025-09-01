@@ -55,22 +55,21 @@ jobs:
       - name: Force branding (icon + splash fallback)
         run: ICON=assets/icon/icon.png SPLASH=assets/ai_logo.png SPLASH_COLOR="#EFE7FF" bash ci/force_branding.sh
 
-      - name: Patch Android 12 splash attrs (namespace & theme fix)
+      - name: Fix Android 12+ (v31) splash styles
         run: |
          set -e
-          for DIR in android/app/src/main/res/values-v31 android/app/src/main/res/values-night-v31; do
-           [ -d "$DIR" ] || continue
-            for F in "$DIR"/*.xml; do
-             [ -f "$F" ] || continue
-         # 1) attr-ek névtérrel ès a hibásak cserèje
-              sed -i 's/name="windowSplashScreenBackground"/name="android:windowSplashScreenBackground"/g' "$F" || true
-              sed -i 's/name="windowSplashScreenAnimatedIcon"/name="android:windowSplashScreenAnimatedIcon"/g' "$F" || true
-              sed -i 's/name="postSplashScreenTheme"/name="android:postSplashScreenTheme"/g' "$F" || true
-        
-              sed -i 's/@style\/Theme\.SplashScreen/@style\/LaunchTheme/g' "$F" || true
-              sed -i 's/@style\/Theme\.Material\.Light\.NoActionBar/@style\/Theme\.App/g' "$F" || true
-            done
-           done
+         mkdir -p android/app/src/main/res/values-v31
+
+         cat > android/app/src/main/res/values-v31/styles.xml <<'EOF'
+         <resources>
+         <!-- Android 12+ splash style, meglévő téma neveket használ -->
+         <style name="Theme.SplashScreen" parent="@style/LaunchTheme">
+          <item name="android:windowSplashScreenBackground">@drawable/launch_background</item>
+          <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+          <item name="android:postSplashScreenTheme">@style/NormalTheme</item>
+         </style>
+         </resources>
+         EOF
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
