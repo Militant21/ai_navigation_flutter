@@ -56,22 +56,6 @@ flutter:
     - assets/i18n/hu.json
     - assets/i18n/de.json
     # - assets/maps/   # ha később lesznek térképfájlok
-
-flutter_native_splash:
-  android: true
-  ios: false
-  color: "#EFE7FF"           # tetszőleges világos háttérszín
-  image: assets/ai_logo.png  # ez legyen a középső kép
-  android_12:
-    color: "#EFE7FF"
-    image: assets/ai_logo.png
-
-flutter_launcher_icons:
-  android: true
-  ios: false
-  image_path: assets/icon/icon.png
-  adaptive_icon_foreground: assets/icon/icon.png
-  adaptive_icon_background: "#FFFFFF"
   
 # Nálad már volt override ehhez a stackhez – hagyjuk így
 dependency_overrides:
