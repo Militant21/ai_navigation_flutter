@@ -52,6 +52,12 @@ jobs:
       - name: Generate native splash
         run: flutter pub run flutter_native_splash:create
 
+      - name: Patch AndroidManifest.xml for permissions
+        run: |
+          chmod +x ci/patch_manifest.sh
+          ./ci/patch_manifest.sh
+
+
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
           set -e
