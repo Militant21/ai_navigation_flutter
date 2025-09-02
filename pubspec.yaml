@@ -56,17 +56,14 @@ flutter:
     # - assets/maps/   # ha később lesznek térképfájlok
 
 # --- Splash ---
-
 flutter_native_splash:
-  color: "#ffffff"
+  android: true
+  ios: false
   image: assets/logo.png
-  android_gravity: fill
+  color: "#ffffff"
   android_12:
-    color: "#ffffff"
     image: assets/logo.png
-    image_content_mode: cover
-
-
+    color: "#ffffff"
 
 # --- Launcher ikon ---
 flutter_launcher_icons:
