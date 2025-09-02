@@ -49,8 +49,10 @@ jobs:
       - name: Generate launcher icons
         run: flutter pub run flutter_launcher_icons
 
-      - name: Generate native splash
-        run: flutter pub run flutter_native_splash:create
+      - name: Clean and Generate native splash
+        run: |
+          flutter pub run flutter_native_splash:remove
+          flutter pub run flutter_native_splash:create
 
       - name: Patch AndroidManifest.xml for permissions
         run: |
