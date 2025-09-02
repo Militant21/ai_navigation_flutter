@@ -1,4 +1,4 @@
-name: ai_navigation_flutter
+úname: ai_navigation_flutter
 publish_to: 'none'
 version: 0.1.1
 
@@ -56,19 +56,17 @@ flutter:
     # - assets/maps/   # ha később lesznek térképfájlok
 
 # --- Splash ---
-# A helyes kód a logo.png teljes képernyős megjelenítéséhez
 flutter_native_splash:
   color: "#ffffff"
   image: assets/logo.png
 
-  # Beállítások régebbi Android verziókhoz
   android_gravity: fill
 
-  # Beállítások Android 12 és újabb verziókhoz
   android_12:
     color: "#ffffff"
     image: assets/logo.png
     image_content_mode: cover
+
 
 # --- Launcher ikon ---
 flutter_launcher_icons:
