@@ -57,14 +57,16 @@ flutter:
 
 # --- Splash ---
 flutter_native_splash:
-  android: true
-  ios: false
-  image: assets/icon/icon.png
   color: "#ffffff"
+  image: assets/logo.png
+
+  # Beállítások régebbi Android verziókhoz
   android_gravity: fill
+
+  # Beállítások Android 12 és újabb verziókhoz
   android_12:
-    image: assets/icon/icon.png
     color: "#ffffff"
+    image: assets/logo.png
     image_content_mode: cover
 
 # --- Launcher ikon ---
