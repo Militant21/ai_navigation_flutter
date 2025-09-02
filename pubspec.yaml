@@ -62,10 +62,10 @@ flutter_native_splash:
 
   android_gravity: fill
 
-  android_12:
-    color: "#ffffff"
-    image: assets/logo.png
-    image_content_mode: cover
+    android_12:
+        color: "#ffffff"
+        image: assets/logo.png
+        image_content_mode: cover
 
 
 # --- Launcher ikon ---
