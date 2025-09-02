@@ -43,9 +43,12 @@ jobs:
       - name: Resolve packages
         run: flutter pub get
 
-      - name: Create platform-specific project files (Android only)
-        run: flutter create --platforms=android .
+      - name: Clean Android directory
+        run: rm -rf android
 
+      - name: Recreate Android project
+        run: flutter create --platforms=android .
+           
       - name: Generate launcher icons
         run: flutter pub run flutter_launcher_icons
 
