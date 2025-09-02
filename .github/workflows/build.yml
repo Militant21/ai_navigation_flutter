@@ -54,7 +54,10 @@ jobs:
 
       - name: Clean and Generate native splash
         run: |
-          flutter pub run flutter_native_splash:create
+         echo "--- A pubspec.yaml FÁJL TARTALMA PONTOSAN EZ: ---"
+          cat pubspec.yaml
+         echo "-------------------------------------------------"
+         flutter pub run flutter_native_splash:create
 
       - name: Patch AndroidManifest.xml for permissions
         run: |
