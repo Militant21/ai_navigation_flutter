@@ -17,7 +17,7 @@ Future<void> main() async {
       supportedLocales: const [Locale('en'), Locale('hu'), Locale('de')],
       path: 'assets/i18n',
       fallbackLocale: const Locale('en'),
-      child: const AiNavApp(),
+      child: AiNavApp(),
     ),
   );
 }
