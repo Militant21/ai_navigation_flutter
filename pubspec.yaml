@@ -56,18 +56,12 @@ flutter:
     # - assets/maps/   # ha később lesznek térképfájlok
 
 # --- Splash ---
-# A gyökér kulcs, nincs előtte szóköz
+
 flutter_native_splash:
-  # Első szint: 2 szóköz
   color: "#ffffff"
   image: assets/logo.png
-
-  # Első szint: 2 szóköz
   android_gravity: fill
-
-  # Első szint: 2 szóköz
   android_12:
-    # Második szint: 4 szóköz (2+2)
     color: "#ffffff"
     image: assets/logo.png
     image_content_mode: cover
