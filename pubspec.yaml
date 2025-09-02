@@ -13,10 +13,10 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-   # meglévők – maradhatnak
+   
   flutter_map: ^6.2.1
   vector_map_tiles: ^7.0.0
-  vector_map_tiles_pmtiles: ">=1.1.0 <2.0.0"  # <- EZ a jó csomagnév
+  vector_map_tiles_pmtiles: ">=1.1.0 <2.0.0"  
   vector_tile_renderer: ^5.2.1   
   latlong2: ^0.9.1
   background_downloader: ^9.2.3
@@ -29,15 +29,12 @@ dependencies:
   url_launcher: ^6.3.0
   http: ^1.2.2
   collection: ^1.18.0
-  path: ^1.9.0                    # <- hasznos a fájl-útvonalakhoz
+  path: ^1.9.0                   
   permission_handler: ^11.3.1
-
-  # új/frissített – 5.1-es háttér + értesítés
   flutter_background_service: ^5.1.0
   flutter_background_service_android: ^6.0.0
   flutter_local_notifications: ^17.2.2
   
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -58,31 +55,17 @@ flutter:
     - assets/i18n/de.json
     # - assets/maps/   # ha később lesznek térképfájlok
 
-
 # --- Splash ---
 flutter_native_splash:
   android: true
   ios: false
   image: assets/icon/icon.png
   color: "#ffffff"
-
-  # ÚJ BEÁLLÍTÁSOK ITT:
-  # Ez dönti el, hogyan illeszkedik a kép.
-  # "cover" vagy "fill" a teljes kitöltéshez.
-  image_content_mode: "cover" 
-  # Android specifikus gravitáció, ha a kép nem tölti ki teljesen
-  # Csak régi Androidokon van hatása, de érdemes beállítani.
-  android_gravity: "fill" # Vagy "center", "top", stb.
-  
-  # Android 12 és újabb rendszerekhez
+  android_gravity: fill
   android_12:
     image: assets/icon/icon.png
     color: "#ffffff"
-    # Itt is megadhatod az image_content_mode-ot,
-    # de általában az Android 12 jobb alapértelmezett viselkedéssel bír
-    image_content_mode: "cover" 
-    # android_gravity: "fill" # Android 12-nél általában nincs rá szükség
-
+    image_content_mode: cover
 
 # --- Launcher ikon ---
 flutter_launcher_icons:
@@ -91,8 +74,7 @@ flutter_launcher_icons:
   image_path: assets/icon/icon.png
   min_sdk_android: 24
   remove_alpha_ios: true
-  
-  
+   
 # Nálad már volt override ehhez a stackhez – hagyjuk így
 dependency_overrides:
   vector_tile_renderer: "5.2.1"
