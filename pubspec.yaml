@@ -60,10 +60,10 @@ flutter_native_splash:
   android: true
   ios: false
   image: assets/logo.png
-  color: "#f5f0e6"
+  color: "#F4EBDD"
   android_12:
     image: assets/logo.png
-    color: "#f5f0e6"
+    color: "#F4EBDD"
     
 # --- Launcher ikon ---
 flutter_launcher_icons:
