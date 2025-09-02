@@ -54,7 +54,6 @@ jobs:
 
       - name: Clean and Generate native splash
         run: |
-          flutter pub run flutter_native_splash:remove
           flutter pub run flutter_native_splash:create
 
       - name: Patch AndroidManifest.xml for permissions
