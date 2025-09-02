@@ -58,15 +58,31 @@ flutter:
     - assets/i18n/de.json
     # - assets/maps/   # ha később lesznek térképfájlok
 
-    # --- Splash ---
+
+# --- Splash ---
 flutter_native_splash:
   android: true
   ios: false
-  image: assets/logo.png
-  color: "#EFE7FF"
+  image: assets/icon/icon.png
+  color: "#ffffff"
+
+  # ÚJ BEÁLLÍTÁSOK ITT:
+  # Ez dönti el, hogyan illeszkedik a kép.
+  # "cover" vagy "fill" a teljes kitöltéshez.
+  image_content_mode: "cover" 
+  # Android specifikus gravitáció, ha a kép nem tölti ki teljesen
+  # Csak régi Androidokon van hatása, de érdemes beállítani.
+  android_gravity: "fill" # Vagy "center", "top", stb.
+  
+  # Android 12 és újabb rendszerekhez
   android_12:
-    image: assets/logo.png
-    color: "#EFE7FF"
+    image: assets/icon/icon.png
+    color: "#ffffff"
+    # Itt is megadhatod az image_content_mode-ot,
+    # de általában az Android 12 jobb alapértelmezett viselkedéssel bír
+    image_content_mode: "cover" 
+    # android_gravity: "fill" # Android 12-nél általában nincs rá szükség
+
 
 # --- Launcher ikon ---
 flutter_launcher_icons:
