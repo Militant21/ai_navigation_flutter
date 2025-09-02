@@ -54,16 +54,13 @@ jobs:
 
       - name: Clean and Generate native splash
         run: |
-         echo "--- A pubspec.yaml FÁJL TARTALMA PONTOSAN EZ: ---"
-          cat pubspec.yaml
-         echo "-------------------------------------------------"
-         flutter pub run flutter_native_splash:create
+          flutter pub run flutter_native_splash:remove
+          flutter pub run flutter_native_splash:create
 
       - name: Patch AndroidManifest.xml for permissions
         run: |
           chmod +x ci/patch_manifest.sh
           ./ci/patch_manifest.sh
-
 
       - name: Set Android SDK levels (min=30, compile/target=35) + Gradle 8.11.1
         run: |
