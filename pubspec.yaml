@@ -55,18 +55,20 @@ flutter:
     - assets/i18n/de.json
     # - assets/maps/   # ha később lesznek térképfájlok
 
-
 # --- Splash ---
-# Ez a kód lefutott hiba nélkül, de a kép kicsi maradt
+# A helyes kód a logo.png teljes képernyős megjelenítéséhez
 flutter_native_splash:
   color: "#ffffff"
   image: assets/logo.png
 
-  # Ez a rész felel az Android 12+ kompatibilitásért
+  # Beállítások régebbi Android verziókhoz
+  android_gravity: fill
+
+  # Beállítások Android 12 és újabb verziókhoz
   android_12:
     color: "#ffffff"
     image: assets/logo.png
-
+    image_content_mode: cover
 
 # --- Launcher ikon ---
 flutter_launcher_icons:
