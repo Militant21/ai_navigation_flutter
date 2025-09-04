@@ -4,11 +4,22 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/pois_db.dart';
 
+/// Egy parkoló találat adatai (általános, több nézethez is jó).
+class ParkingHit {
+  final LatLng point;
+  final String title;
+  /// ÚTVONAL menti távolság tőlem előre (km). Kör-kereséseknél ez „légvonal” km lesz.
+  final double routeKmFromMe;
+  /// ÚTVONAL menti szelvény a starttól (km). Kör-kereséseknél 0.
+  final double routeKmFromStart;
+  ParkingHit(this.point, this.title, this.routeKmFromMe, this.routeKmFromStart);
+}
+
 class PoiController {
   final PoisDB? db;
   PoiController(this.db);
 
-  // ===== Alap POI a térképnél (marad a régi viselkedés) =====
+  // ===== Alap POI-k az aktuális nézethez =====
   Future<List<Marker>> markersForView(
     MapCamera cam, {
     required bool parks,
@@ -32,7 +43,7 @@ class PoiController {
 
     Future<void> add(String table, String key) async {
       final rows = await db!.inBBox(table: table, west: w, south: s, east: e, north: n, limit: lim);
-      out.addAll(rows.map((r) => _mkMarker(
+      out.addAll(rows.map((r) => _mk(
             LatLng((r['lat'] as num).toDouble(), (r['lon'] as num).toDouble()),
             _ico(key),
             style,
@@ -48,29 +59,19 @@ class PoiController {
     return out;
   }
 
-  // ===== ÚJ: "találat" modell, úton előre mutatva =====
-  class ParkingHit {
-    final LatLng point;
-    final String title;
-    final double routeKmFromMe;      // útvonal mentén, tőlem előre (km)
-    final double routeKmFromStart;   // útvonal mentén a starttól (km)
-    ParkingHit(this.point, this.title, this.routeKmFromMe, this.routeKmFromStart);
-  }
-
-  // Úton, előre (csak haladási irány), kis oldaleltérés engedve
+  // ===== Útvonalon előre – csak a haladási irányban, oldal-eltérés tűréssel =====
   Future<List<ParkingHit>> upcomingOnRoute({
     required List<LatLng> route,
     required LatLng? me,
     required double lateralToleranceMeters, // pl. 60 m
-    required double aheadKmLimit,           // pl. 150 km a nagy listához
+    required double aheadKmLimit,           // pl. 150 km
   }) async {
     if (db == null || route.length < 2) return const <ParkingHit>[];
 
-    // Kumulált szelvényezés a gyors projekcióhoz
-    final _Seg sdata = _prepRoute(route);
-    final double sMe = me == null ? 0.0 : _projectOnRouteMeters(me, sdata).$1;
+    final seg = _prepRoute(route);
+    final double sMe = me == null ? 0.0 : _projectOnRouteMeters(me, seg).$1;
 
-    // Egyetlen nagy bbox a teljes útvonalra + kis ráhagyás
+    // bbox az egész vonalra + pici ráhagyás
     final bb = _routeBBox(route);
     final midLat = (bb.s + bb.n) / 2;
     final padLat = lateralToleranceMeters / 111320.0;
@@ -88,25 +89,23 @@ class PoiController {
     final hits = <ParkingHit>[];
     for (final r in rows) {
       final p = LatLng((r['lat'] as num).toDouble(), (r['lon'] as num).toDouble());
-      final (sP, lateral) = _projectOnRouteMeters(p, sdata);
+      final (sP, lateral) = _projectOnRouteMeters(p, seg);
       if (lateral <= lateralToleranceMeters) {
-        final ahead = (sP - sMe) / 1000.0; // km-ben
+        final ahead = (sP - sMe) / 1000.0; // km
         if (ahead >= 0 && ahead <= aheadKmLimit) {
           final name = (r['name'] as String?) ?? (r['brand'] as String?) ?? 'Parkoló';
           hits.add(ParkingHit(p, name, ahead, sP / 1000.0));
         }
       }
     }
-
     hits.sort((a, b) => a.routeKmFromMe.compareTo(b.routeKmFromMe));
     return hits;
   }
 
-  // Cél vagy felhasználó közelében, sugárban
+  // ===== Kör-keresés: körülöttem / cél közelében =====
   Future<List<ParkingHit>> parksNearHits({
     required LatLng center,
-    required double radiusMeters,    // 21000
-    required String titlePrefix,     // "tőlem" / "céltól" kezeléséhez csak cím kell, a UI dönt
+    required double radiusMeters, // pl. 21000
   }) async {
     if (db == null) return const <ParkingHit>[];
 
@@ -124,7 +123,6 @@ class PoiController {
       final d = _hav(center, p);
       if (d <= radiusMeters) {
         final name = (r['name'] as String?) ?? (r['brand'] as String?) ?? 'Parkoló';
-        // routeKmFromMe mezőbe most is a km-t rakjuk (de ez „sugár” szerinti)
         out.add(ParkingHit(p, name, d / 1000.0, 0));
       }
     }
@@ -132,9 +130,8 @@ class PoiController {
     return out;
   }
 
-  // ===== Segédek =====
-
-  Marker _mkMarker(LatLng p, IconData icon, String style, String tip) => Marker(
+  // ----- segédek -----
+  Marker _mk(LatLng p, IconData icon, String style, String tip) => Marker(
         point: p,
         width: 36,
         height: 36,
@@ -161,7 +158,7 @@ class PoiController {
     return (w: minLon, s: minLat, e: maxLon, n: maxLat);
   }
 
-  // Equirect projekció a polylinere (gyors), vissza: (ívhossz méterben, laterális távolság méterben)
+  // Projekció a szelvényezett polylinere – vissza: (ívhossz m, laterális távolság m)
   (double, double) _projectOnRouteMeters(LatLng p, _Seg s) {
     final ax = p.longitude * s.kx, ay = p.latitude * s.ky;
     double bestDist2 = double.infinity;
