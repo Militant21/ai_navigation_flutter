@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -13,16 +13,16 @@ class MapWidget extends StatefulWidget {
   final File? pmtiles;
   final vtr.Theme? theme;
 
-  final LatLng? myLocation;
+  final LatLng? myLocation;        // zöld pont
   final Color myColor;
 
   final List<Polyline> lines;
   final List<Marker> poiMarkers;
   final List<Coord> wps;
 
-  final VoidCallback onCameraMoved;           // amikor a kamera tényleg elmozdult
-  final VoidCallback onUserGesture;           // user érintéssel indított mozgatás
-  final void Function(LatLng p) onLongPress;  // új waypoint
+  final VoidCallback onCameraMoved;          // debounced hívás
+  final VoidCallback onUserGesture;          // user-eredetű mozgatás
+  final void Function(LatLng p) onLongPress; // új waypoint
 
   final String zoomPreset; // 'near'|'mid'|'far'
   final LatLng initialCenter;
@@ -53,10 +53,30 @@ class _MapWidgetState extends State<MapWidget> {
   double? _lastZoom;
   double? _lastRotation;
 
-  Future<Widget?> _layerFuture() async {
-    if (widget.pmtiles == null || widget.theme == null) return null;
-    return pmtilesLayer(widget.pmtiles!, theme: widget.theme!);
+  // >>> gyorsítások:
+  Future<Widget?>? _layerFut;  // pmtiles réteg cache-elve
+  Timer? _moveDebounce;        // POI-frissítés debounce
+
+  @override
+  void initState() {
+    super.initState();
+    _rebuildLayer();
   }
+
+  @override
+  void didUpdateWidget(covariant MapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pmtiles?.path != widget.pmtiles?.path || oldWidget.theme != widget.theme) {
+      _rebuildLayer();
+    }
+  }
+
+  void _rebuildLayer() {
+    _layerFut = (widget.pmtiles == null || widget.theme == null)
+        ? Future.value(null)
+        : pmtilesLayer(widget.pmtiles!, theme: widget.theme!);
+  }
+  // <<<
 
   @override
   Widget build(BuildContext context) {
@@ -64,21 +84,23 @@ class _MapWidgetState extends State<MapWidget> {
       return const Center(child: Text('No region'));
     }
     return FutureBuilder(
-      future: _layerFuture(),
+      future: _layerFut,
       builder: (c, s) {
         if (!s.hasData) return const Center(child: CircularProgressIndicator());
         final initZoom = widget.zoomPreset == 'near' ? 15.0 : widget.zoomPreset == 'mid' ? 13.0 : 11.0;
+
         return FlutterMap(
           mapController: widget.mapCtrl,
           options: MapOptions(
             center: widget.initialCenter,
             zoom: initZoom,
             onMapEvent: (evt) {
-              // user érintésből induló mozgatás → szólunk a szülőnek (follow off)
+              // felhasználói drag → follow off a szülőben
               if (evt.source == MapEventSource.dragStart || evt.source == MapEventSource.multiFingerStart) {
                 widget.onUserGesture();
               }
-              // detektáljuk, tényleg változott-e a kamera
+
+              // valódi kamera-változás detektálása
               final cam = widget.mapCtrl.camera;
               const epsZoom = 0.001;
               const epsRot = 0.1;
@@ -88,14 +110,18 @@ class _MapWidgetState extends State<MapWidget> {
               } else {
                 final movedLat = _lastCenter!.latitude != cam.center.latitude;
                 final movedLon = _lastCenter!.longitude != cam.center.longitude;
-                final zoomDiff = (_lastZoom ?? -999) - cam.zoom;
-                final rotDiff = (_lastRotation ?? -999) - cam.rotation;
-                changed = movedLat || movedLon || zoomDiff.abs() > epsZoom || rotDiff.abs() > epsRot;
+                final zoomChanged = ((_lastZoom ?? -999) - cam.zoom).abs() > epsZoom;
+                final rotChanged  = ((_lastRotation ?? -999) - cam.rotation).abs() > epsRot;
+                changed = movedLat || movedLon || zoomChanged || rotChanged;
               }
               _lastCenter = cam.center;
               _lastZoom = cam.zoom;
               _lastRotation = cam.rotation;
-              if (changed) widget.onCameraMoved();
+
+              if (changed) {
+                _moveDebounce?.cancel();
+                _moveDebounce = Timer(const Duration(milliseconds: 120), widget.onCameraMoved);
+              }
             },
             onLongPress: (tapPos, p) => widget.onLongPress(p),
           ),
@@ -106,11 +132,14 @@ class _MapWidgetState extends State<MapWidget> {
               MarkerLayer(markers: _myLocationMarkers(widget.myLocation!, widget.myColor)),
             MarkerLayer(markers: widget.poiMarkers),
             MarkerLayer(
-              markers: widget.wps.map((w) => Marker(
-                point: LatLng(w.lat, w.lon),
-                width: 40, height: 40,
-                child: const Icon(Icons.place, color: Colors.red),
-              )).toList(),
+              markers: widget.wps
+                  .map((w) => Marker(
+                        point: LatLng(w.lat, w.lon),
+                        width: 40,
+                        height: 40,
+                        child: const Icon(Icons.place, color: Colors.red),
+                      ))
+                  .toList(),
             ),
           ],
         );
@@ -119,19 +148,23 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   List<Marker> _myLocationMarkers(LatLng p, Color color) => [
-    Marker(
-      point: p, width: 38, height: 38,
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withOpacity(.20),
-          border: Border.all(color: color.withOpacity(.6), width: 2),
+        Marker(
+          point: p,
+          width: 38,
+          height: 38,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withOpacity(.20),
+              border: Border.all(color: color.withOpacity(.6), width: 2),
+            ),
+          ),
         ),
-      ),
-    ),
-    Marker(
-      point: p, width: 14, height: 14,
-      child: Container(decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
-    ),
-  ];
+        Marker(
+          point: p,
+          width: 14,
+          height: 14,
+          child: Container(decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+        ),
+      ];
 }
