@@ -15,7 +15,8 @@ import '../models/route_models.dart';
 import '../models/truck.dart';
 import 'package:vector_tile_renderer/vector_tile_renderer.dart' as vtr;
 import '../theme/map_themes.dart';
-
+import '../widgets/profile_picker.dart';
+import '../widgets/waypoint_list.dart';
 import '../map_widget.dart';
 import '../controllers/location_controller.dart';
 import '../controllers/poi_controller.dart';
@@ -47,8 +48,8 @@ class _HomeState extends State<HomeScreen> {
   bool _followMe = true;
 
   // ÚJ: a „következő 3” parkoló az ÚTVONALON (előttem)
-  List<PoiController.ParkingHit> next3 = const [];
-
+  List<ParkingHit> next3 = const [];
+  
   @override
   void initState() {
     super.initState();
