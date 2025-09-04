@@ -87,25 +87,38 @@ class _HomeState extends State<HomeScreen> {
     }
     await _loadRegion();
   }
-
+  
   Future<void> _loadRegion() async {
     Directory? dir;
-    final d1 = Directory('/storage/emulated/0/maps');
-    if (await d1.exists()) dir = d1;
 
-    if (dir == null) {
-      final ext = await getExternalStorageDirectory();
-      if (ext != null) {
-        final d2 = Directory('${ext.path}/regions');
-        if (await d2.exists()) dir = d2;
+// 1) preferált: saját gyökér (ez az import célja is)
+     final preferred = Directory(kMapsRoot); // a local_import.dart-ból
+      if (await preferred.exists()) dir = preferred;
+
+      // 2) kompatibilitás: régi /maps mappa
+      if (dir == null) {
+       final d1 = Directory('/storage/emulated/0/maps');
+        if (await d1.exists()) dir = d1;
       }
-    }
-    if (dir == null) {
-      final docs = await getApplicationDocumentsDirectory();
-      final d3 = Directory('${docs.path}/regions');
-      if (await d3.exists()) dir = d3;
-    }
-    if (dir == null) return;
+
+      // 3) app-doksi mappák fallback (ahova a downloader is dolgozik)
+      if (dir == null) {
+       final ext = await getExternalStorageDirectory();
+        if (ext != null) {
+         final d2 = Directory('${ext.path}/regions');
+          if (await d2.exists()) dir = d2;
+        }
+       }
+       if (dir == null) {
+        final docs = await getApplicationDocumentsDirectory();
+        final d3 = Directory('${docs.path}/regions');
+        if (await d3.exists()) dir = d3;
+        }
+
+       if (dir == null) return;
+
+// --- innen maradhat a meglévő kódod: fájllista bejárása,
+// .pmtiles felismerése, _pmtiles / _poiCtl beállítása, stb. ---
 
     await for (final e in dir.list()) {
       if (e is File && e.path.toLowerCase().endsWith('.pmtiles')) {
@@ -204,6 +217,33 @@ class _HomeState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Routing error: $e')));
     }
   }
+  Future<void> _importLocalFiles() async {
+  try {
+    final files = await LocalImport.importFromDevice();
+    if (files.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nincs kiválasztott fájl.')),
+      );
+      return;
+    }
+
+    // Import után frissítsük a térképet/POI-kat
+    await _loadRegion();     // ez nálad beállítja a _pmtiles/_poiCtl-t
+    await _refreshPois();
+    await _refreshNext3();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${files.length} fájl importálva az ai_nav_maps mappába.')),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Import hiba: $e')),
+    );
+  }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,6 +255,10 @@ class _HomeState extends State<HomeScreen> {
             tooltip: tr('download_region'),
             icon: const Icon(Icons.cloud_download),
             onPressed: () => Navigator.pushNamed(context, '/catalog').then((_) => _loadRegion()),
+          ),
+          IconButton( tooltip: 'Fájl importálása',
+          icon: const Icon(Icons.upload_file),
+          onPressed: _importLocalFiles,
           ),
           IconButton(
             tooltip: tr('settings'),
