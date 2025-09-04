@@ -19,6 +19,7 @@ import '../theme/map_themes.dart';
 import '../map_widget.dart';
 import '../controllers/location_controller.dart';
 import '../controllers/poi_controller.dart';
+import 'parking_explorer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +28,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeState extends State<HomeScreen> {
-  // --- állapot ---
   final mapCtrl = MapController();
   vtr.Theme? _theme;
   File? _pmtiles;
@@ -36,7 +36,6 @@ class _HomeState extends State<HomeScreen> {
   final loc = LocationController.instance;
   static const truckGreen = Color(0xFF1B6A58);
 
-  // UI
   List<Coord> wps = const [Coord(19.040, 47.497), Coord(19.260, 47.530)];
   TruckProfile truck = TruckProfile();
   ProfileKind profile = ProfileKind.motorway;
@@ -46,6 +45,9 @@ class _HomeState extends State<HomeScreen> {
   List<Polyline> lines = [];
   List<Marker> poiMarkers = [];
   bool _followMe = true;
+
+  // ÚJ: a „következő 3” parkoló az ÚTVONALON (előttem)
+  List<PoiController.ParkingHit> next3 = const [];
 
   @override
   void initState() {
@@ -62,19 +64,19 @@ class _HomeState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ---- helymeghatározás ----
   Future<void> _initLocation() async {
     await loc.start();
-    loc.position.addListener(() {
+    loc.position.addListener(() async {
       if (!mounted) return;
       if (loc.followMe && loc.position.value != null) {
         mapCtrl.move(LatLng(loc.position.value!.latitude, loc.position.value!.longitude), mapCtrl.camera.zoom);
       }
-      setState(() {}); // „zöld pont” újrarajzolás
+      // frissítsük a "következő 3" listát
+      await _refreshNext3();
+      setState(() {});
     });
   }
 
-  // ---- tárhely + régió ----
   Future<void> _ensureStorageAndLoadRegion() async {
     if (Platform.isAndroid) {
       var s = await Permission.manageExternalStorage.status;
@@ -116,12 +118,12 @@ class _HomeState extends State<HomeScreen> {
         setState(() => _poiCtl = PoiController(db));
 
         await _refreshPois();
+        await _refreshNext3();
         return;
       }
     }
   }
 
-  // ---- állapot ----
   Future<void> _restoreState() async {
     final s = await KV.get<Map>('state');
     final set = await KV.get<Map>('settings');
@@ -157,22 +159,31 @@ class _HomeState extends State<HomeScreen> {
     setState(() => _theme = t);
   }
 
-  // ---- POI ----
   Future<void> _refreshPois() async {
     if (_poiCtl == null) return;
     final markers = await _poiCtl!.markersForView(
       mapCtrl.camera,
-      parks: showParks,
-      fuel: showFuel,
-      services: showServices,
-      cameras: showCameras,
-      style: style,
+      parks: showParks, fuel: showFuel, services: showServices, cameras: showCameras, style: style,
     );
     if (!mounted) return;
     setState(() => poiMarkers = markers);
   }
 
-  // ---- útvonal ----
+  // Következő 3 parkoló az ÚTON, előre
+  Future<void> _refreshNext3() async {
+    if (_poiCtl == null) return;
+    if (lines.isEmpty || lines.first.points.length < 2) { setState(()=>next3 = const []); return; }
+    final me = loc.position.value == null ? null : LatLng(loc.position.value!.latitude, loc.position.value!.longitude);
+    final hits = await _poiCtl!.upcomingOnRoute(
+      route: lines.first.points,
+      me: me,
+      lateralToleranceMeters: 60, // ~sáv / leállósáv közeli
+      aheadKmLimit: 500,          // a 3 legközelebbihez elég nagy plafon
+    );
+    if (!mounted) return;
+    setState(() => next3 = hits.take(3).toList());
+  }
+
   Future<void> _route() async {
     try {
       final code = context.locale.languageCode;
@@ -185,6 +196,7 @@ class _HomeState extends State<HomeScreen> {
           Polyline(points: r.line.map((e) => LatLng(e[1], e[0])).toList(), strokeWidth: 5, color: Colors.orange),
         ];
       });
+      await _refreshNext3();
       speak('Útvonal frissítve', 'hu-HU');
     } catch (e) {
       if (!mounted) return;
@@ -192,7 +204,6 @@ class _HomeState extends State<HomeScreen> {
     }
   }
 
-  // ---- UI ----
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -251,10 +262,55 @@ class _HomeState extends State<HomeScreen> {
                   zoomPreset: zoom,
                   initialCenter: const LatLng(47.497, 19.040),
                 ),
+
+                // --- Felső kis panel: KÖVETKEZŐ 3 PARKOLÓ ---
+                if (next3.isNotEmpty) Positioned(
+                  top: 10, right: 10, left: 10,
+                  child: Card(
+                    elevation: 4,
+                    color: Colors.white.withOpacity(0.96),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.local_parking, color: Colors.blueGrey),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: next3.map((h) => Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: Chip(
+                                    label: Text('${h.title} • ${h.routeKmFromMe.toStringAsFixed(1)} km'),
+                                  ),
+                                )).toList(),
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _openExplorer,
+                            child: const Text('További »'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
                 _panel(context),
               ],
             ),
     );
+  }
+
+  void _openExplorer() {
+    if (_poiCtl == null || lines.isEmpty) return;
+    final dest = wps.isEmpty ? null : LatLng(wps.last.lat, wps.last.lon);
+    final me = loc.position.value == null ? null : LatLng(loc.position.value!.latitude, loc.position.value!.longitude);
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ParkingExplorerScreen(
+      poi: _poiCtl!, routePoints: lines.first.points, me: me, dest: dest,
+    )));
   }
 
   Widget _noRegion(BuildContext c) => Center(
@@ -266,7 +322,7 @@ class _HomeState extends State<HomeScreen> {
       );
 
   Widget _panel(BuildContext c) => Positioned(
-        top: 10,
+        top: 70, // lejjebb, hogy ne ütközzön a „következő 3” panellel
         left: 10,
         right: 10,
         child: Card(
@@ -275,7 +331,11 @@ class _HomeState extends State<HomeScreen> {
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                ProfilePicker(value: profile, onChanged: (k) => setState(() => profile = k)),
+                Row(children: [
+                  Expanded(child: ProfilePicker(value: profile, onChanged: (k) => setState(() => profile = k))),
+                  const SizedBox(width: 8),
+                  ElevatedButton(onPressed: _route, child: const Text('Útvonal')),
+                ]),
                 const SizedBox(height: 6),
                 WaypointList(
                   wps: wps,
@@ -296,6 +356,7 @@ class _HomeState extends State<HomeScreen> {
                       setState(() => style = v as String);
                       _initTheme();
                       _saveState();
+                      _refreshPois();
                     },
                   ),
                   const SizedBox(width: 12),
@@ -311,25 +372,33 @@ class _HomeState extends State<HomeScreen> {
                       _saveState();
                     },
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(onPressed: _route, child: const Text('Útvonal')),
                 ]),
                 const SizedBox(height: 6),
-                SwitchListTile(title: const Text('Parkolók'), value: showParks, onChanged: (v) {
-                  setState(() => showParks = v); _saveState(); _refreshPois();
-                }),
-                SwitchListTile(title: const Text('Kutak'), value: showFuel, onChanged: (v) {
-                  setState(() => showFuel = v); _saveState(); _refreshPois();
-                }),
-                SwitchListTile(title: const Text('Szervizek'), value: showServices, onChanged: (v) {
-                  setState(() => showServices = v); _saveState(); _refreshPois();
-                }),
-                SwitchListTile(title: const Text('Kamerák'), value: showCameras, onChanged: (v) {
-                  setState(() => showCameras = v); _saveState(); _refreshPois();
-                }),
+                Wrap(spacing: 8, runSpacing: 0, children: [
+                  FilterChip(
+                    label: const Text('Parkolók'),
+                    selected: showParks,
+                    onSelected: (v) { setState(() => showParks = v); _saveState(); _refreshPois(); },
+                  ),
+                  FilterChip(
+                    label: const Text('Kút'),
+                    selected: showFuel,
+                    onSelected: (v) { setState(() => showFuel = v); _saveState(); _refreshPois(); },
+                  ),
+                  FilterChip(
+                    label: const Text('Szerviz'),
+                    selected: showServices,
+                    onSelected: (v) { setState(() => showServices = v); _saveState(); _refreshPois(); },
+                  ),
+                  FilterChip(
+                    label: const Text('Kamerák'),
+                    selected: showCameras,
+                    onSelected: (v) { setState(() => showCameras = v); _saveState(); _refreshPois(); },
+                  ),
+                ]),
+                const SizedBox(height: 6),
                 if (rr != null)
-                  Text(
-                      '${(rr!.distanceKm).toStringAsFixed(1)} km • ${rr!.durationMin.toStringAsFixed(0)} min • ETA ${rr!.eta.toLocal().toString().substring(11, 16)}'),
+                  Text('${(rr!.distanceKm).toStringAsFixed(1)} km • ${rr!.durationMin.toStringAsFixed(0)} min • ETA ${rr!.eta.toLocal().toString().substring(11, 16)}'),
               ]),
             ),
           ),
