@@ -13,15 +13,15 @@ class MapWidget extends StatefulWidget {
   final File? pmtiles;
   final vtr.Theme? theme;
 
-  final LatLng? myLocation;        // zöld pont
+  final LatLng? myLocation;       // zöld pont
   final Color myColor;
 
   final List<Polyline> lines;
   final List<Marker> poiMarkers;
   final List<Coord> wps;
 
-  final VoidCallback onCameraMoved;          // debounced hívás
-  final VoidCallback onUserGesture;          // user-eredetű mozgatás
+  final VoidCallback onCameraMoved;          // debounced frissítés
+  final VoidCallback onUserGesture;          // user mozgatás
   final void Function(LatLng p) onLongPress; // új waypoint
 
   final String zoomPreset; // 'near'|'mid'|'far'
@@ -53,8 +53,8 @@ class _MapWidgetState extends State<MapWidget> {
   double? _lastZoom;
   double? _lastRotation;
 
-  Future<Widget?>? _layerFut;  // pmtiles réteg cache
-  Timer? _moveDebounce;        // POI-frissítés debounce
+  Future<Widget?>? _layerFut;   // pmtiles réteg cache
+  Timer? _moveDebounce;         // POI-debounce
 
   @override
   void initState() {
@@ -98,12 +98,12 @@ class _MapWidgetState extends State<MapWidget> {
             initialCenter: widget.initialCenter,
             initialZoom: initZoom,
             onMapEvent: (evt) {
-              // verziófüggetlen „user gesture” felismerés:
+              // Verziófüggetlen user-gesture detektálás
               if (evt.source != MapEventSource.mapController) {
                 widget.onUserGesture();
               }
 
-              // változás-detektálás
+              // Kamera-változás figyelése
               final cam = widget.mapCtrl.camera;
               const epsZoom = 0.001;
               const epsRot  = 0.1;
@@ -130,11 +130,11 @@ class _MapWidgetState extends State<MapWidget> {
           ),
           children: [
             tileLayer,                                // vektor csempék
-            PolylineLayer(polylines: widget.lines),
+            PolylineLayer(polylines: widget.lines),   // útvonal
             if (widget.myLocation != null)
               MarkerLayer(markers: _myLocationMarkers(widget.myLocation!, widget.myColor)),
-            MarkerLayer(markers: widget.poiMarkers),
-            MarkerLayer(
+            MarkerLayer(markers: widget.poiMarkers),  // POI-k
+            MarkerLayer(                              // waypontok
               markers: widget.wps
                   .map((w) => Marker(
                         point: LatLng(w.lat, w.lon),
