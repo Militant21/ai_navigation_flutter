@@ -53,8 +53,7 @@ class _MapWidgetState extends State<MapWidget> {
   double? _lastZoom;
   double? _lastRotation;
 
-  // >>> gyorsítások:
-  Future<Widget?>? _layerFut;  // pmtiles réteg cache-elve
+  Future<Widget?>? _layerFut;  // pmtiles réteg cache
   Timer? _moveDebounce;        // POI-frissítés debounce
 
   @override
@@ -76,40 +75,43 @@ class _MapWidgetState extends State<MapWidget> {
         ? Future.value(null)
         : pmtilesLayer(widget.pmtiles!, theme: widget.theme!);
   }
-  // <<<
 
   @override
   Widget build(BuildContext context) {
     if (widget.pmtiles == null || widget.theme == null) {
       return const Center(child: Text('No region'));
     }
-    return FutureBuilder(
+
+    final initZoom = widget.zoomPreset == 'near' ? 15.0 : widget.zoomPreset == 'mid' ? 13.0 : 11.0;
+
+    return FutureBuilder<Widget?>(
       future: _layerFut,
-      builder: (c, s) {
-        if (!s.hasData) return const Center(child: CircularProgressIndicator());
-        final initZoom = widget.zoomPreset == 'near' ? 15.0 : widget.zoomPreset == 'mid' ? 13.0 : 11.0;
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done || snapshot.data == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final tileLayer = snapshot.data!;
 
         return FlutterMap(
           mapController: widget.mapCtrl,
           options: MapOptions(
-            center: widget.initialCenter,
-            zoom: initZoom,
+            initialCenter: widget.initialCenter,
+            initialZoom: initZoom,
             onMapEvent: (evt) {
-              // felhasználói drag → follow off a szülőben
-              // HELYETTE legyen:
-                   if (evt.source != MapEventSource.mapController) 
-                    widget.onUserGesture();
-                   }
+              // verziófüggetlen „user gesture” felismerés:
+              if (evt.source != MapEventSource.mapController) {
+                widget.onUserGesture();
+              }
 
-              // valódi kamera-változás detektálása
+              // változás-detektálás
               final cam = widget.mapCtrl.camera;
               const epsZoom = 0.001;
-              const epsRot = 0.1;
+              const epsRot  = 0.1;
               bool changed = false;
               if (_lastCenter == null) {
                 changed = true;
               } else {
-                final movedLat = _lastCenter!.latitude != cam.center.latitude;
+                final movedLat = _lastCenter!.latitude  != cam.center.latitude;
                 final movedLon = _lastCenter!.longitude != cam.center.longitude;
                 final zoomChanged = ((_lastZoom ?? -999) - cam.zoom).abs() > epsZoom;
                 final rotChanged  = ((_lastRotation ?? -999) - cam.rotation).abs() > epsRot;
@@ -124,12 +126,12 @@ class _MapWidgetState extends State<MapWidget> {
                 _moveDebounce = Timer(const Duration(milliseconds: 120), widget.onCameraMoved);
               }
             },
-            onLongPress: (tapPos, p) => widget.onLongPress(p),
+            onLongPress: (_, p) => widget.onLongPress(p),
           ),
           children: [
-            s.data as Widget,                      // pmtiles vektor csempék
+            tileLayer,                                // vektor csempék
             PolylineLayer(polylines: widget.lines),
-            if (widget.myLocation != null)         // zöld helyzetjelző (aura + pötty)
+            if (widget.myLocation != null)
               MarkerLayer(markers: _myLocationMarkers(widget.myLocation!, widget.myColor)),
             MarkerLayer(markers: widget.poiMarkers),
             MarkerLayer(
