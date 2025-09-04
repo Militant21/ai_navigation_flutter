@@ -53,7 +53,7 @@ flutter:
     - assets/i18n/en.json
     - assets/i18n/hu.json
     - assets/i18n/de.json
-    # - assets/maps/   # ha később lesznek térképfájlok
+    - assets/maps/   
 
 # --- Splash ---
 flutter_native_splash:
