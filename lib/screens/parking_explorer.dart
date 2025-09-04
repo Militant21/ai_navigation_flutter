@@ -24,7 +24,7 @@ class ParkingExplorerScreen extends StatefulWidget {
 
 class _ParkingExplorerScreenState extends State<ParkingExplorerScreen> {
   ParkingMode mode = ParkingMode.onRoute;
-  List<PoiController.ParkingHit> hits = const [];
+  List<ParkingHit> hits = const [];
 
   @override
   void initState() {
@@ -33,7 +33,7 @@ class _ParkingExplorerScreenState extends State<ParkingExplorerScreen> {
   }
 
   Future<void> _refresh() async {
-    List<PoiController.ParkingHit> res = const [];
+    List<ParkingHit> res = const [];
     switch (mode) {
       case ParkingMode.onRoute:
         res = await widget.poi.upcomingOnRoute(
@@ -45,12 +45,12 @@ class _ParkingExplorerScreenState extends State<ParkingExplorerScreen> {
         break;
       case ParkingMode.nearMe:
         if (widget.me != null) {
-          res = await widget.poi.parksNearHits(center: widget.me!, radiusMeters: 21000, titlePrefix: 'tőlem');
+          res = await widget.poi.parksNearHits(center: widget.me!, radiusMeters: 21000);
         }
         break;
       case ParkingMode.nearDest:
         if (widget.dest != null) {
-          res = await widget.poi.parksNearHits(center: widget.dest!, radiusMeters: 21000, titlePrefix: 'céltól');
+          res = await widget.poi.parksNearHits(center: widget.dest!, radiusMeters: 21000);
         }
         break;
     }
@@ -100,13 +100,15 @@ class _ParkingExplorerScreenState extends State<ParkingExplorerScreen> {
                     final distStr = mode == ParkingMode.nearDest
                         ? '${h.routeKmFromMe.toStringAsFixed(1)} km a céltól'
                         : '${h.routeKmFromMe.toStringAsFixed(1)} km tőlem';
-                    final sub = mode == ParkingMode.onRoute ? 'Útvonal-szelvény: ${h.routeKmFromStart.toStringAsFixed(1)} km' : '';
+                    final sub = mode == ParkingMode.onRoute
+                        ? 'Útvonal-szelvény: ${h.routeKmFromStart.toStringAsFixed(1)} km'
+                        : '';
                     return ListTile(
                       leading: const Icon(Icons.local_parking),
                       title: Text(h.title),
                       subtitle: Text([distStr, sub].where((s) => s.isNotEmpty).join(' • ')),
                       onTap: () {
-                        // itt később lehet „navigálj ide” funkciót adni
+                        // későbbre: "navigálj ide" funkció
                       },
                     );
                   },
