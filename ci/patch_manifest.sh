@@ -48,6 +48,10 @@ if [ "${ENABLE_BLUETOOTH:-0}" = "1" ]; then
   add_feature "android.hardware.bluetooth_le" "false"
   add_feature "android.hardware.bluetooth" "false"
 fi
+# Android 10 (API 29) kompat: legacy external storage
+if ! grep -q 'requestLegacyExternalStorage' "$MANIFEST"; then
+  sed -i 's#<application #<application android:requestLegacyExternalStorage="true" #' "$MANIFEST"
+fi
 
 # Jelöld, hogy tudsz GPS-t használni (nem kötelező)
 add_feature "android.hardware.location.gps" "false"
