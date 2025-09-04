@@ -34,6 +34,7 @@ dependencies:
   flutter_background_service: ^5.1.0
   flutter_background_service_android: ^6.0.0
   flutter_local_notifications: ^17.2.2
+  file_picker: ^8.0.3
   
 dev_dependencies:
   flutter_test:
