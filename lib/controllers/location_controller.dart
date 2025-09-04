@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 class LocationController {
@@ -18,7 +18,10 @@ class LocationController {
     if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
     if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
 
-    position.value = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+    try {
+      position.value = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+    } catch (_) {}
+
     _sub?.cancel();
     _sub = Geolocator.getPositionStream().listen((p) => position.value = p);
   }
