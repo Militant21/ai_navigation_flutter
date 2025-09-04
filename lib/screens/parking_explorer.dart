@@ -108,7 +108,7 @@ class _ParkingExplorerScreenState extends State<ParkingExplorerScreen> {
                       title: Text(h.title),
                       subtitle: Text([distStr, sub].where((s) => s.isNotEmpty).join(' • ')),
                       onTap: () {
-                        // későbbre: "navigálj ide" funkció
+                        // ide jöhet később "navigálj ide"
                       },
                     );
                   },
