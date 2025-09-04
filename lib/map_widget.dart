@@ -96,9 +96,10 @@ class _MapWidgetState extends State<MapWidget> {
             zoom: initZoom,
             onMapEvent: (evt) {
               // felhasználói drag → follow off a szülőben
-              if (evt.source == MapEventSource.dragStart || evt.source == MapEventSource.multiFingerStart) {
-                widget.onUserGesture();
-              }
+              // HELYETTE legyen:
+                   if (evt.source != MapEventSource.mapController) 
+                    widget.onUserGesture();
+                   }
 
               // valódi kamera-változás detektálása
               final cam = widget.mapCtrl.camera;
