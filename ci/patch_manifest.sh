@@ -21,6 +21,9 @@ add_perm "android.permission.INTERNET"
 add_perm "android.permission.ACCESS_NETWORK_STATE"
 add_perm "android.permission.ACCESS_COARSE_LOCATION"
 add_perm "android.permission.ACCESS_FINE_LOCATION"
+# ---- Külső tárhely (maps mappa olvasása) ----
+add_perm "android.permission.READ_EXTERNAL_STORAGE"       # Android 10 és régebbi
+add_perm "android.permission.MANAGE_EXTERNAL_STORAGE"     # Android 11+ (All files access)
 
 # ---- Opcionális: háttérhelyzet + értesítés ----
 if [ "${ENABLE_BACKGROUND:-0}" = "1" ]; then
